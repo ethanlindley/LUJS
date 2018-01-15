@@ -1,4 +1,11 @@
+/**
+ * A DataStructure used for keeping track of acks
+ */
 class RangeList {
+    /**
+     * Constructs a new RangeList and set the default values
+     * @param {BitStream} data
+     */
     constructor(data = undefined) {
         this.ranges = [];
 
@@ -17,6 +24,10 @@ class RangeList {
         }
     }
 
+    /**
+     * Converts this object into an Array
+     * @returns {Array<Number>}
+     */
     toArray() {
         let ret = [];
         for(let i = 0; i < this.ranges.length; i ++) {
@@ -28,12 +39,24 @@ class RangeList {
     }
 }
 
+/**
+ * The internal class RangeList uses to hold its ranges
+ */
 class Range {
+    /**
+     * Constructs a new Range from the values
+     * @param {Number} min
+     * @param {Number} max
+     */
     constructor(min, max) {
         this.min = min;
         this.max = max;
     }
 
+    /**
+     * Returns an array
+     * @returns {Array<Number>}
+     */
     toArray() {
         let ret = [];
         for(let i = this.min; i < max; i++) {

@@ -1,3 +1,7 @@
+/**
+ * A bunch of types of messages used by RakNet
+ * @type {string[]}
+ */
 const rak_messages = [
     //
     // RESERVED TYPES - DO NOT CHANGE THESE
