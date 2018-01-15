@@ -1,4 +1,4 @@
-#LUJS#
+# LUJS
 
 A simple little Node.js project for trying and emulating LEGO Universe servers.
 
