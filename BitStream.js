@@ -1,4 +1,11 @@
+/**
+ * The BitStream class used for reading data from a Buffer.
+ */
 class BitStream {
+    /**
+     * Creates a new instance of the BitStream class and sets up the default values for some variables
+     * @param {Buffer} data
+     */
     constructor(data = undefined) {
         if(data !== undefined) {
             this._data = data;
@@ -18,15 +25,26 @@ class BitStream {
         this._byte = this._byteCount ? this._data.readUInt8(0) : undefined;
     }
 
-    //returns the length of this BitStream
+    /**
+     * Returns the length of this BitStream
+     * @returns {Number}
+     */
     length() {
         return this._byteCount;
     }
-    //returns true if we are at the end of the stream
+
+    /**
+     * Returns true if we are at the end of the stream
+     * @returns {Boolean}
+     */
     allRead() {
         return this._rBytePos * 8 + this._rBitPos >= this._byteCount * 8 - 1;
     }
-    //Reads a single bit from the Buffer
+
+    /**
+     * Reads a single bit from the Buffer
+     * @returns {Number}
+     */
     readBit() {
         if (this._byte === undefined) return undefined;
 
@@ -38,7 +56,11 @@ class BitStream {
         }
         return bit;
     }
-    //writes a single bit to the buffer
+
+    /**
+     * Writes a single bit to the buffer
+     * @param {Number} b The bit to write
+     */
     writeBit(b) {
         if(typeof(b) !== "boolean") {
             throw new Error("BitStream writeBit was not passed a boolean");
@@ -76,9 +98,16 @@ class BitStream {
             this._wBytePos ++;
         }
     }
-    //reads multiple bits from the buffer
+
+    /**
+     * Reads multiple bits from the buffer
+     * @param {Number} n The number of bits to read
+     * @returns {Number}
+     */
     readBits(n) {
         let val = 0;
+        if(this._rBytePos < this._byteCount) this._byte = this._data.readUInt8(this._rBytePos);
+
         while (n--) {
             let bit = this.readBit();
             if(bit === undefined) {
@@ -88,9 +117,16 @@ class BitStream {
         }
         return val;
     }
-    //reads bits in reverse
+
+    /**
+     * Reads bits in reverse
+     * @param {Number} n The number of bits to read
+     * @returns {Number}
+     */
     readBitsReversed(n) {
         let val = 0;
+
+        // Don't know why I need this here, but I do
         for (let i = 0; i < n; i ++) {
             let bit = this.readBit();
             if(bit === undefined) {
@@ -100,7 +136,14 @@ class BitStream {
         }
         return val;
     }
-    //dont ask
+
+    /**
+     * Don't ask...
+     * @param ret
+     * @param n
+     * @param b
+     * @returns {*}
+     */
     readBitsStream(ret, n, b = true) {
         if(n <= 0) return undefined;
         if(this._rBytePos + Math.floor(n/8) > this._byteCount) return undefined;
@@ -126,15 +169,29 @@ class BitStream {
         }
         return ret;
     }
-    //reads a byte from the buffer
+
+    /**
+     * Reads a byte from the buffer
+     * @returns {Number}
+     */
     readByte() {
         return this.readBits(8);
     }
-    //reads byte at offset
+
+    /**
+     * Read a byte at a given offset
+     * @param {Number} o Offset byte
+     * @returns {Number}
+     */
     readByteOffset(o) {
         return this._data.readUInt8(o);
     }
-    //read n number of bytes to new stream
+
+    /**
+     * Read number of bytes to a new stream
+     * @param {Number} n Number of bytes
+     * @returns {BitStream}
+     */
     readBytes(n) {
         let val = new BitStream();
         while(n--) {
@@ -142,7 +199,11 @@ class BitStream {
         }
         return val;
     }
-    //writes a byte to the buffer
+
+    /**
+     * Writes a byte to the stream
+     * @param {Number} n The byte to write to the stream
+     */
     writeByte(n) {
         //we have to build an array of true and false... or we can just left shift it and do it that way
         for(let i = 0; i < 8; i++) {
@@ -156,7 +217,12 @@ class BitStream {
             n &= 0xFF; //ensure we are only looking at a byte...
         }
     }
-    //writes a byte with a given offset
+
+    /**
+     * Writes a byte a offset
+     * @param {Number} n Byte to write
+     * @param {Number} o Offset to write at
+     */
     writeByteOffset(n, o) {
         if(o + 1> this.length()) { //we are trying to write outside the current size... resizing to fix...
             this._data = Buffer.alloc(o + 1, 0);
@@ -169,31 +235,55 @@ class BitStream {
         }
         this._data.writeUInt8(n, o);
     }
-    //reads a single char from the buffer
+
+    /**
+     * Reads a character from the stream
+     * @returns {Number}
+     */
     readChar() {
         return this.readBits(8);
     }
-    //writes a char to the buffer
+
+    /**
+     * Writes a character to the stream
+     * @param {Number} n Character to write
+     */
     writeChar(n) {
         this.writeByte(n);
     }
-    //reads a signed char from the buffer
+
+    /**
+     * Reads a signed character from the stream
+     * @returns {Number}
+     */
     readSignedChar() {
         if(this.readBit()) {
             return -this.readBits(7)
         }
         return this.readBits(7);
     }
-    //reads a short form the buffer
+
+    /**
+     * Reads an unsigned short from the stream
+     * @returns {Number}
+     */
     readShort() {
         return this.readByte() & (this.readByte() << 8);
     }
-    //writes a char to the buffer
+
+    /**
+     * Writes an unsigned short to the stream
+     * @param {Number} n The number to write
+     */
     writeShort(n) {
         this.writeByte(n & 0xff); //write the bottom byte
         this.writeByte((n & 0xff00) >>> 8); //write the top byte
     }
-    //reads a signed short from the buffer
+
+    /**
+     * Reads a signed short from the stream
+     * @returns {Number}
+     */
     readSignedShort() {
         let firstByte = this.readByte();
         if(this.readBit()) {
@@ -201,20 +291,35 @@ class BitStream {
         }
         return firstByte & (this.readBits(7) << 7);
     }
-    //reads a long from the buffer
+
+    /**
+     * Reads an unsigned long from the stream
+     * @returns {Number}
+     */
     readLong() {
         return this.readShort() + (this.readShort() << 16)
     }
-    //writes a long to the buffer
+
+    /**
+     * Writes an unsigned long to the stream
+     * @param {Number} n The number to write
+     */
     writeLong(n) {
         this.writeShort(n & 0xffff); //write the lower two bytes...
         this.writeShort((n & 0xffff0000) >>> 16); //write the top two bytes
     }
-    //reads a signed long from the buffers
+
+    /**
+     * Currently not implemented
+     */
     readSignedLong() {
         //lol no
     }
-    //reads a long long from the buffer
+
+    /**
+     * Reads an unsigned long long from the stream
+     * @returns {Number}
+     */
     readLongLong() {
         return this.readByte() +
             (this.readByte() << 8) +
@@ -225,12 +330,21 @@ class BitStream {
             (this.readByte() << 48) +
             (this.readByte() << 56);
     }
-    //writes a long long to the buffer
+
+    /**
+     * Writes an unsigned long long to the stream
+     * @param {Number} n The number to write
+     */
     writeLongLong(n) {
         this.writeLong(n & 0xffffffff);
         this.writeLong((n & 0xffffffff00000000) >>> 32);
     }
-    //reads compressed data from the buffer
+
+    /**
+     * Reads compressed data from the stream
+     * @param {Number} size The size of the data to read
+     * @returns {BitStream}
+     */
     readCompressed(size) {
         let ret = new BitStream();
         let currentByte = (size >> 3) - 1;
@@ -266,14 +380,21 @@ class BitStream {
         }
         return ret;
     }
-    //aligns to byte
+
+    /**
+     * Aligns the current reading bit to a byte
+     */
     alignRead() {
         if(this._rBitPos !== 0) {
             this._rBitPos = 0;
             this._rBytePos ++;
         }
     }
-    //concatenate an array of BitStreams together
+
+    /**
+     * Adds a BitStream to the end of this BitStream
+     * @param {BitStream} bs The BitStream to add on
+     */
     concat(bs) {
         for(let i = 0; i < bs.length; i ++) {
             for(let j = 0; j < bs[i].length(); j ++) {
@@ -281,8 +402,61 @@ class BitStream {
             }
         }
     }
+
+    /**
+     * Gets the binary string representation of this BitStream
+     * @returns {String}
+     */
+    toBinaryString() {
+        let output = "";
+        let temp = [
+            '0000',
+            '0001',
+            '0010',
+            '0011',
+            '0100',
+            '0101',
+            '0110',
+            '0111',
+            '1000',
+            '1001',
+            '1010',
+            '1011',
+            '1100',
+            '1101',
+            '1110',
+            '1111'
+        ];
+
+        for(let i = 0; i < this._byteCount; i ++) {
+            let byte = this._data.readUInt8(i);
+            let partone = (byte & 0xF0) >> 4;
+            let parttwo = byte & 0x0F;
+
+            if(i === this._rBytePos) {
+                for(let j = 7; j >= 0; j--) {
+                    let bit = (byte & this._mask[j]) >> j;
+                    if(j === this._rBitPos) {
+                        output += " -> "
+                    }
+                    output += bit;
+                }
+                output += ' ';
+            } else {
+                output += temp[partone] + temp[parttwo] + ' ';
+            }
+
+
+        }
+        return output;
+    }
 }
 
+/**
+ * Turns Unicode into a number
+ * @param {String} string
+ * @returns {Number}
+ */
 function ord (string) {
     //  discuss at: http://locutus.io/php/ord/
     // original by: Kevin van Zonneveld (http://kvz.io)

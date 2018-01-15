@@ -1,6 +1,10 @@
 const RangeList = require('./RangeList.js');
 const BitStream = require('./BitStream.js');
 
+/**
+ * An enum for determining what type of reliability a packet was sent with.
+ * @type {{UNRELIABLE: number, UNRELIABLE_SEQUENCED: number, RELIABLE: number, RELIABLE_ORDERED: number, RELIABLE_SEQUENCED: number}}
+ */
 const Reliability = {
     'UNRELIABLE': 0,
     'UNRELIABLE_SEQUENCED': 1,
@@ -9,7 +13,15 @@ const Reliability = {
     'RELIABLE_SEQUENCED': 4,
 };
 
+/**
+ * The ReliabilityLayer class used for sending and receiving data to a single client.
+ */
 class ReliabilityLayer {
+    /**
+     * Constructs a new instance of ReliabilityLayer and set default values for the object
+     * @param server
+     * @param address
+     */
     constructor(server, address) {
         this._server = server;
         this._address = address;
@@ -24,13 +36,23 @@ class ReliabilityLayer {
         this.queue = [];
         this.sequencedReadIndex = 0;
         this.orderedReadIndex = 0;
+        this.outOfOrderPackets = [];
     }
 
+    /**
+     * Handles a new packet when we receive one
+     * @param {BitStream} data The packet
+     */
     handle_data(data) {
         if(this.handle_data_header(data)) return;
         return this.parse_packets(data);
     }
 
+    /**
+     * Handles the acks packets and other header parts of the packet
+     * @param {BitStream} data The packet
+     * @returns {Boolean}
+     */
     handle_data_header(data) {
         if(data.readBit()) { //if there are acks...
             let yeOldenTime = data.readLong();
@@ -51,6 +73,8 @@ class ReliabilityLayer {
             for(let i = 0; i < acks.toArray().length; i ++) {
 
             }
+
+            //skipping a bunch of stuffs...
         }
         if(data.allRead()) {
             return true;
@@ -61,16 +85,27 @@ class ReliabilityLayer {
         return false;
     }
 
+    /**
+     * Parses the rest of the packet out so we can handle it later
+     * @param {BitStream} data The packet
+     * @returns {Array<BitStream>}
+     */
     parse_packets(data) {
         let toRet = [];
         while(!data.allRead()) {
+
             let messageNumber = data.readLong();
-            let reliability = data.readBitsReversed(3);
+            console.log("Message Number: " + messageNumber);
+            let reliability = data.readBits(3);
+            console.log("Reliability: " + reliability);
             let orderingChannel;
             let orderingIndex;
+
             if(reliability === Reliability.UNRELIABLE_SEQUENCED || reliability === Reliability.RELIABLE_ORDERED) {
-                orderingChannel = data.readBitsReversed(5);
+                orderingChannel = data.readBits(5);
+                console.log("Ordering Channel: " + orderingChannel);
                 orderingIndex = data.readLong();
+                console.log("Ordering index: " + orderingIndex);
             }
             let isSplit = data.readBit();
             let splitPacketId;
@@ -122,14 +157,21 @@ class ReliabilityLayer {
                     }
                 }
             } else if(reliability === Reliability.RELIABLE_ORDERED) {
-                console.log("i dont wanna");
-                /*if(orderingIndex !== undefined && orderingChannel !== undefined) {
+                if(orderingIndex !== undefined && orderingChannel !== undefined) {
+
                     if(orderingIndex === this.orderedReadIndex) {
+                        console.log("we got one");
                         this.orderedReadIndex ++;
                         let ord = orderingIndex + 1;
-                        for(let i = 0; i < ord)
+                        console.log("Releasing ordered packet at " + ord);
+                    } else if (orderingIndex < this.orderedReadIndex) {
+                        console.warn('Packet was duplicate!');
+                    } else {
+                        // We can't release this packet because we are waiting for an earlier one?
+                        this.outOfOrderPackets[orderingIndex] = packet;
+                        console.info('Found packet at ' + orderingIndex);
                     }
-                }*/
+                }
             }
             toRet.push(packet);
         }

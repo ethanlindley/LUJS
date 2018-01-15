@@ -4,14 +4,25 @@ const rMsgs = require('./rak-messages.js');
 const BitStream = require('./BitStream.js');
 const ReliabilityLayer = require('./ReliabilityLayer.js');
 
+/**
+ *
+ * @type {Array<ReliabilityLayer>}
+ */
 const connections = [];
 
+/**
+ * When the server encounters an error
+ */
 server.on('error', (err) => {
     console.log(`server error:\n${err.stack}`);
-server.close();
+    server.close();
 });
 
+/**
+ * Whenever the server gets a new incoming message from a client
+ */
 server.on('message', (msg, rinfo) => {
+
     let data = new BitStream(msg);
 
     if(data.length() === 2) { //meaning there isnt an open connection yet...
@@ -33,6 +44,9 @@ server.on('message', (msg, rinfo) => {
     }
 });
 
+/**
+ * When the server is starting
+ */
 server.on('listening', () => {
     const address = server.address();
     console.log(`server listening ${address.address}:${address.port}`);
