@@ -39,7 +39,27 @@ server.on('message', (msg, rinfo) => {
 
     } else {
         if(connections[rinfo.address] !== undefined) { //we have an existing connection
-            console.log(connections[rinfo.address].handle_data(data));
+            console.log(data.toBinaryString());
+            const packets = connections[rinfo.address].handle_data(data);
+            let finished = false;
+
+            while(!finished) {
+                let next = packets.next();
+                if(next.value !== undefined) {
+                    /**
+                     *
+                     * @type {BitStream}
+                     */
+                    let packet = next.value;
+
+                    console.log(packet.toBinaryString());
+
+                }
+
+                if(next.done) {
+                    finished = true;
+                }
+            }
         }
     }
 });

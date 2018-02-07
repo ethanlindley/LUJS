@@ -1,5 +1,6 @@
 const RangeList = require('./RangeList.js');
 const BitStream = require('./BitStream.js');
+const assert = require('assert');
 
 /**
  * An enum for determining what type of reliability a packet was sent with.
@@ -43,9 +44,9 @@ class ReliabilityLayer {
      * Handles a new packet when we receive one
      * @param {BitStream} data The packet
      */
-    handle_data(data) {
-        if(this.handle_data_header(data)) return;
-        return this.parse_packets(data);
+    *handle_data(data) {
+        if(this.handle_data_header(data)) yield undefined;
+        yield* this.parse_packets(data);
     }
 
     /**
@@ -88,10 +89,8 @@ class ReliabilityLayer {
     /**
      * Parses the rest of the packet out so we can handle it later
      * @param {BitStream} data The packet
-     * @returns {Array<BitStream>}
      */
-    parse_packets(data) {
-        let toRet = [];
+    *parse_packets(data) {
         while(!data.allRead()) {
 
             let messageNumber = data.readLong();
@@ -104,6 +103,7 @@ class ReliabilityLayer {
             if(reliability === Reliability.UNRELIABLE_SEQUENCED || reliability === Reliability.RELIABLE_ORDERED) {
                 orderingChannel = data.readBits(5);
                 console.log("Ordering Channel: " + orderingChannel);
+                assert(orderingChannel === 0, "Ordering channel not 0! Error in reading packet!");
                 orderingIndex = data.readLong();
                 console.log("Ordering index: " + orderingIndex);
             }
@@ -120,7 +120,8 @@ class ReliabilityLayer {
                     this.queue[splitPacketId] = [splitPacketCount];
                 }
             }
-            let length = data.readCompressed(16);
+            let length = data.readCompressed(16).readShort();
+            console.log("Packet is " + length + " bits long");
             data.alignRead();
             let packet = data.readBytes(Math.ceil(length/8));
 
@@ -164,8 +165,12 @@ class ReliabilityLayer {
                         this.orderedReadIndex ++;
                         let ord = orderingIndex + 1;
                         console.log("Releasing ordered packet at " + ord);
+                        for(let i = ord; i < this.orderedReadIndex; i ++) {
+
+                        }
                     } else if (orderingIndex < this.orderedReadIndex) {
                         console.warn('Packet was duplicate!');
+                        continue;
                     } else {
                         // We can't release this packet because we are waiting for an earlier one?
                         this.outOfOrderPackets[orderingIndex] = packet;
@@ -173,9 +178,8 @@ class ReliabilityLayer {
                     }
                 }
             }
-            toRet.push(packet);
+            yield packet;
         }
-        return toRet;
     }
 }
 
