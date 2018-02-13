@@ -10,7 +10,7 @@ class RangeList {
         this.ranges = [];
 
         if(data !== undefined) {
-            let count = data.readCompressed(16);
+            let count = data.readCompressed(2);
             let maxEqualToMin = false;
             for (let i = 0; i < count; i ++) {
                 maxEqualToMin = data.readBit();

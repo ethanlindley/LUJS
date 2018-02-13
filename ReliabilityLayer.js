@@ -14,6 +14,9 @@ const Reliability = {
     'RELIABLE_SEQUENCED': 4,
 };
 
+const MTU_SIZE = 1228;
+const UDP_HEADER_SIZE = 28;
+
 /**
  * The ReliabilityLayer class used for sending and receiving data to a single client.
  */
@@ -36,8 +39,11 @@ class ReliabilityLayer {
         this.acks = [];
         this.queue = [];
         this.sequencedReadIndex = 0;
+        this.sequencedWriteIndex = 0;
         this.orderedReadIndex = 0;
+        this.orderedWriteIndex = 0;
         this.outOfOrderPackets = [];
+        this.sends = [];
     }
 
     /**
@@ -56,6 +62,7 @@ class ReliabilityLayer {
      */
     handle_data_header(data) {
         if(data.readBit()) { //if there are acks...
+            console.log("Has acks!");
             let yeOldenTime = data.readLong();
             let rtt = (Date.now() - this.last) / 1000 - yeOldenTime/1000;
             this.last = Date.now();
@@ -90,39 +97,46 @@ class ReliabilityLayer {
      * Parses the rest of the packet out so we can handle it later
      * @param {BitStream} data The packet
      */
-    *parse_packets(data) {
+     *parse_packets(data) {
         while(!data.allRead()) {
 
             let messageNumber = data.readLong();
-            console.log("Message Number: " + messageNumber);
+            //console.log("Message Number: " + messageNumber);
             let reliability = data.readBits(3);
-            console.log("Reliability: " + reliability);
+            assert(reliability !== Reliability.RELIABLE_SEQUENCED, "Got Reliable Sequenced! This is not used!");
+            //console.log("Reliability: " + reliability);
+
             let orderingChannel;
             let orderingIndex;
-
             if(reliability === Reliability.UNRELIABLE_SEQUENCED || reliability === Reliability.RELIABLE_ORDERED) {
                 orderingChannel = data.readBits(5);
-                console.log("Ordering Channel: " + orderingChannel);
+                //console.log("Ordering Channel: " + orderingChannel);
                 assert(orderingChannel === 0, "Ordering channel not 0! Error in reading packet!");
                 orderingIndex = data.readLong();
-                console.log("Ordering index: " + orderingIndex);
+                //console.log("Ordering index: " + orderingIndex);
             }
+
             let isSplit = data.readBit();
             let splitPacketId;
             let splitPacketIndex;
             let splitPacketCount;
             if(isSplit) { //if the packet is split
                 splitPacketId = data.readShort();
-                splitPacketIndex = data.readCompressed(32);
-                splitPacketCount = data.readCompressed(32);
+                //console.log("Split Packet ID: " + splitPacketId);
+                splitPacketIndex = data.readCompressed(4).readLong();
+                //console.log("Split Packet Index: " + splitPacketIndex);
+                splitPacketCount = data.readCompressed(4).readLong();
+                //console.log("Split Packet Count: " + splitPacketCount);
 
                 if(this.queue[splitPacketId] === undefined) {
                     this.queue[splitPacketId] = [splitPacketCount];
                 }
             }
-            let length = data.readCompressed(16).readShort();
-            console.log("Packet is " + length + " bits long");
+
+            let length = data.readCompressed(2).readShort();
+            //console.log("Packet is " + length + " bits long");
             data.alignRead();
+
             let packet = data.readBytes(Math.ceil(length/8));
 
             if(reliability === Reliability.RELIABLE || reliability === Reliability.RELIABLE_ORDERED) {
@@ -161,26 +175,104 @@ class ReliabilityLayer {
                 if(orderingIndex !== undefined && orderingChannel !== undefined) {
 
                     if(orderingIndex === this.orderedReadIndex) {
-                        console.log("we got one");
+                        //console.log("we got one");
                         this.orderedReadIndex ++;
                         let ord = orderingIndex + 1;
-                        console.log("Releasing ordered packet at " + ord);
+                        //console.log("Releasing ordered packet at " + ord);
                         for(let i = ord; i < this.orderedReadIndex; i ++) {
 
                         }
                     } else if (orderingIndex < this.orderedReadIndex) {
-                        console.warn('Packet was duplicate!');
+                        //console.warn('Packet was duplicate!');
                         continue;
                     } else {
                         // We can't release this packet because we are waiting for an earlier one?
                         this.outOfOrderPackets[orderingIndex] = packet;
-                        console.info('Found packet at ' + orderingIndex);
+                        //console.info('Found packet at ' + orderingIndex);
                     }
                 }
             }
+            //yield packet;
             yield packet;
         }
     }
+
+    /**
+     *
+     * @param {BitStream} packet
+     * @param {Number} reliability
+     */
+    send(packet, reliability) {
+        let orderingIndex;
+        if(reliability === Reliability.UNRELIABLE_SEQUENCED) {
+            orderingIndex = this.sequencedWriteIndex;
+            this.sequencedWriteIndex ++;
+        } else if (reliability === Reliability.RELIABLE_ORDERED) {
+           orderingIndex = this.orderedWriteIndex;
+           this.orderedWriteIndex++;
+        } else {
+           orderingIndex = undefined;
+        }
+
+        if(ReliabilityLayer.packetHeaderLength(reliability, false) + data.length() >= MTU_SIZE - UDP_HEADER_SIZE) {
+
+        } else {
+
+        }
+    }
+
+    /**
+     * This loops until the connection is closed. Think of it as a sending thread
+     */
+    sendLoop() {
+
+        while(this.sends.length > 0) {
+            let packet = this.sends.pop();
+
+
+        }
+
+        setTimeout(this.sendLoop(), 30);
+    }
+
+    /**
+     *
+     * @param {BitStream} data
+     * @param {Number} messageNumber
+     * @param {Number} reliability
+     */
+    sendMessage(data, messageNumber, reliability) {
+        let toSend = new BitStream();
+        toSend.writeBit(this.acks.length !== 0);
+        if(this.acks.length !== 0) {
+
+        }
+    }
+
+    /**
+     *
+     * @param {Number} reliability
+     * @param {Boolean} split
+     * @returns {number}
+     */
+    static packetHeaderLength(reliability, split) {
+        let length = 32;
+        length += 3;
+        if (reliability === Reliability.UNRELIABLE_SEQUENCED || reliability === Reliability.RELIABLE_ORDERED) {
+            length += 5;
+            length += 32;
+        }
+        length += 1;
+
+        if (split) {
+            length += 16;
+            length += 32;
+            length += 32;
+        }
+
+        length += 16;
+        return Math.ceil(length / 8);
+    }
 }
 
-module.exports = ReliabilityLayer;
+module.exports = {ReliabilityLayer, Reliability};

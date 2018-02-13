@@ -46,20 +46,20 @@ class BitStream {
      * @returns {Number}
      */
     readBit() {
-        if (this._byte === undefined) return undefined;
+        if (this._rBytePos >= this._byteCount) throw new Error("Reached end of stream!");
 
-        let bit = (this._byte & this._mask[this._rBitPos]) >> this._rBitPos;
+        let byte = this._data.readUInt8(this._rBytePos);
+        let bit = (byte & this._mask[this._rBitPos]) >> this._rBitPos;
         if (--this._rBitPos === -1) {
             this._rBitPos = 7;
             this._rBytePos++;
-            this._byte = this._rBytePos < this._byteCount ? ord(this._data.readUInt8(this._rBytePos)) : undefined;
         }
         return bit;
     }
 
     /**
      * Writes a single bit to the buffer
-     * @param {Number} b The bit to write
+     * @param {boolean} b The bit to write
      */
     writeBit(b) {
         if(typeof(b) !== "boolean") {
@@ -110,9 +110,6 @@ class BitStream {
 
         while (n--) {
             let bit = this.readBit();
-            if(bit === undefined) {
-                return undefined;
-            }
             val = (val << 1) | bit;
         }
         return val;
@@ -129,9 +126,6 @@ class BitStream {
         // Don't know why I need this here, but I do
         for (let i = 0; i < n; i ++) {
             let bit = this.readBit();
-            if(bit === undefined) {
-                return undefined;
-            }
             val |= (bit << i);
         }
         return val;
@@ -268,7 +262,8 @@ class BitStream {
      * @returns {Number}
      */
     readShort() {
-        return this.readByte() & (this.readByte() << 8);
+        return this.readByte() +
+            (this.readByte() << 8);
     }
 
     /**
@@ -297,7 +292,10 @@ class BitStream {
      * @returns {Number}
      */
     readLong() {
-        return this.readShort() + (this.readShort() << 16)
+        return this.readByte() +
+            (this.readByte() << 8) +
+            (this.readByte() << 16) +
+            (this.readByte() * 16777216); // Had to do this because shifting it over 24 places causes it to return a signed value because JavsScript treats numbers in bitshift as 32bit
     }
 
     /**
@@ -324,11 +322,11 @@ class BitStream {
         return this.readByte() +
             (this.readByte() << 8) +
             (this.readByte() << 16) +
-            (this.readByte() << 24) +
-            (this.readByte() << 32) +
-            (this.readByte() << 40) +
-            (this.readByte() << 48) +
-            (this.readByte() << 56);
+            (this.readByte() * 16777216) +
+            (this.readByte() * 4294967296) +
+            (this.readByte() * 1099511627776) +
+            (this.readByte() * 281474976710656) +
+            (this.readByte() * 72057594037927936);
     }
 
     /**
@@ -346,37 +344,37 @@ class BitStream {
      * @returns {BitStream}
      */
     readCompressed(size) {
-        let ret = new BitStream();
-        let currentByte = (size >> 3) - 1;
-        let byteMatch = 0xFF, halfByteMatch = 0xF0;
+        let currentByte = size - 1;
 
         while(currentByte > 0) {
             let b = this.readBit();
             if(b === undefined) return undefined;
 
             if(b) {
-                ret.writeByteOffset(byteMatch, currentByte);
                 currentByte --;
             } else {
-                ret = this.readBitsStream(ret, (currentByte + 1) << 3);
-                if(ret === undefined) return undefined;
-                else return ret;
+                let ret = new BitStream();
+                for(let i = 0; i < size - currentByte - 1; i++) {
+                    ret.writeByte(0);
+                }
+                for(let i = 0; i < currentByte + 1; i ++) {
+                    ret.writeByte(this.readByte());
+                }
+                return ret;
             }
         }
 
         let b = this.readBit();
         if(b === undefined) return undefined;
 
+        let ret = new BitStream();
         if(b) {
-            let nibble = 0;
-            nibble |= (this.readBit() & 0x1);
-            nibble |= (this.readBit() & 0x1) << 1;
-            nibble |= (this.readBit() & 0x1) << 2;
-            nibble |= (this.readBit() & 0x1) << 3;
-            nibble |= halfByteMatch;
-            ret.writeByteOffset(nibble, currentByte);
+            ret.writeByte(this.readBits(4) << 4 && 0xF0);
         } else {
-            ret.writeByteOffset(this.readByte(), currentByte);
+            ret.writeByte(this.readByte());
+        }
+        for(let i = 0; i < size - 1; i++) {
+            ret.writeByte(0);
         }
         return ret;
     }
@@ -385,8 +383,8 @@ class BitStream {
      * Aligns the current reading bit to a byte
      */
     alignRead() {
-        if(this._rBitPos !== 0) {
-            this._rBitPos = 0;
+        if(this._rBitPos !== 7) {
+            this._rBitPos = 7;
             this._rBytePos ++;
         }
     }
