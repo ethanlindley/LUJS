@@ -3,7 +3,7 @@ class MessageHandler {
         this.type = undefined;
         /**
          *
-         * @param {Socket} server
+         * @param {RakServer} server
          * @param {BitStream} packet
          * @param user
          */

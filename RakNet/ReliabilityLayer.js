@@ -1,4 +1,6 @@
-const RangeList = require('./RangeList.js');
+// TODO: At some point in my poor future, I will have to implement ack packets
+
+const RangeList = require('./Structures/RangeList.js');
 const BitStream = require('./BitStream.js');
 const assert = require('assert');
 
@@ -27,7 +29,7 @@ class ReliabilityLayer {
      * @param address
      */
     constructor(server, address) {
-        this._server = server;
+        this.server = server;
         this._address = address;
 
         this.srrt = undefined;
@@ -44,6 +46,13 @@ class ReliabilityLayer {
         this.orderedWriteIndex = 0;
         this.outOfOrderPackets = [];
         this.sends = [];
+        this.congestionWindow = 0;
+        this.packetsSent = 0;
+        this.sendMessageNumberIndex = 0;
+        let layer = this;
+        this.interval = setInterval(function() {
+            layer.sendLoop();
+        }, 30);
     }
 
     /**
@@ -215,9 +224,14 @@ class ReliabilityLayer {
         }
 
         if(ReliabilityLayer.packetHeaderLength(reliability, false) + data.length() >= MTU_SIZE - UDP_HEADER_SIZE) {
-
+            // TODO: Add a way to split packets and iterate through them to add them to the queue
         } else {
-
+            this.sends.push({
+                'packet': packet,
+                'reliability': reliability,
+                'orderingIndex': orderingIndex,
+                'splitPacketInfo': undefined
+            });
         }
     }
 
@@ -227,12 +241,15 @@ class ReliabilityLayer {
     sendLoop() {
 
         while(this.sends.length > 0) {
+            if(this.packetsSent > this.congestionWindow) break;
             let packet = this.sends.pop();
 
+            this.packetsSent ++;
+            let index = this.sendMessageNumberIndex;
+            this.sendMessageNumberIndex ++;
 
+            this.sendMessage(packet.packet, index, packet.reliability);
         }
-
-        setTimeout(this.sendLoop(), 30);
     }
 
     /**

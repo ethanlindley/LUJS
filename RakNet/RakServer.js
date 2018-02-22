@@ -6,7 +6,7 @@ const RakMessages = require('./RakMessages.js');
 const BitStream = require('./BitStream.js');
 const {ReliabilityLayer, Reliability} = require('./ReliabilityLayer.js');
 const data = require('dgram');
-const MessageHandler = require('./MessageHandler.js');
+const MessageHandler = require('../Handles/MessageHandler.js');
 
 
 class RakServer {
@@ -19,42 +19,31 @@ class RakServer {
         /**
          *
          * @type {Array<ReliabilityLayer>}
-         * @private
          */
-        this._connections = [];
+        this.connections = [];
 
         /**
          *
          * @type {string}
-         * @private
          */
-        this._password = password;
+        this.password = password;
 
         /**
          * {Socket}
          */
-        this._server = data.createSocket('udp4');
+        this.server = data.createSocket('udp4');
 
         /**
          *
          * @type {Array<MessageHandler>}
-         * @private
          */
-        this._handles = [];
+        this.handles = [];
 
-        var normalizedPath = require("path").join(__dirname, "./MessageHandles");
-        var handles = [];
-
-        require("fs").readdirSync(normalizedPath).forEach(function(file) {
-            handles.push(require("./MessageHandles/" + file));
-        });
-        this._handles = handles;
-
-        this._server.on('error', (err) => {
+        this.server.on('error', (err) => {
             this.onError(err);
         });
 
-        this._server.on('message', (msg, senderInfo) => {
+        this.server.on('message', (msg, senderInfo) => {
             let data = new BitStream(msg);
             try {
                 this.onMessage(data, senderInfo)
@@ -64,13 +53,18 @@ class RakServer {
             }
         });
 
-        this._server.on('listening', () => {
+        this.server.on('listening', () => {
             this.onListening();
         });
 
-        this._server.bind(port);
+        this.server.bind(port);
     }
 
+    /**
+     * This is called when we receive a new message from a client.
+     * @param {BitStream} data
+     * @param {Object} senderInfo
+     */
     onMessage(data, senderInfo) {
         if(data.length() === 2) { //meaning there isnt an open connection yet...
 
@@ -78,15 +72,15 @@ class RakServer {
             //console.log(RakMessages[messageId] + ': 0x' + messageId.toString(16) + ' (' + messageId + ')');
 
             if(messageId === RakMessages.ID_OPEN_CONNECTION_REQUEST) {
-                this._connections[senderInfo.address] = (new ReliabilityLayer());
+                this.connections[senderInfo.address] = (new ReliabilityLayer());
                 let ret = Buffer.alloc(1);
                 ret.writeInt8(RakMessages.ID_OPEN_CONNECTION_REPLY, 0);
-                this._server.send(ret, senderInfo.port, senderInfo.address);
+                this.server.send(ret, senderInfo.port, senderInfo.address);
             }
 
         } else {
-            if(this._connections[senderInfo.address] !== undefined) { //we have an existing connection
-                const packets = this._connections[senderInfo.address].handle_data(data);
+            if(this.connections[senderInfo.address] !== undefined) { //we have an existing connection
+                const packets = this.connections[senderInfo.address].handle_data(data);
                 let finished = false;
 
                 while(!finished) {
@@ -106,19 +100,24 @@ class RakServer {
         }
     }
 
+    /**
+     * This is called by onMessage after it breaks down the packets into what gets done when
+     * @param {BitStream} packet
+     * @param {Object} senderInfo
+     */
     onPacket(packet, senderInfo) {
 
         let type = packet.readByte();
         let handled = false;
 
-        for(let i = 0; i < this._handles.length; i++) {
+        for(let i = 0; i < this.handles.length; i++) {
             /**
              *
              * @type {MessageHandler}
              */
-            let handle = this._handles[i].create();
+            let handle = this.handles[i].create();
             if(handle.type === type) {
-                handle.handle(this._server, packet, senderInfo);
+                handle.handle(this, packet, senderInfo);
                 handled = true;
             }
         }
@@ -126,34 +125,32 @@ class RakServer {
         if(!handled) {
             console.log("Unhandled packet. ID: " + RakMessages.key(type));
         }
-        // I want to move this to a nice event structure later... just testing now...
-        /*switch(packet.readByte()) {
-            case RakMessages.ID_CONNECTION_REQUEST:
-                let password = "";
-                while(!packet.allRead()) {
-                    password += String.fromCharCode(packet.readByte());
-                }
-                if(password === this._password) {
-                    let response = new BitStream();
-                    response.writeByte(RakMessages.ID_CONNECTION_REQUEST_ACCEPTED);
-                    response.writeLong(this.inet_aton(senderInfo.address));
-                    response.writeShort(senderInfo.port);
-                    response.writeShort(0);
-                    response.writeLong(this.inet_aton(this._server.address().address));
-                    response.writeShort(this._server.address().port);
-                }
-                break;
-        }*/
     }
 
+    /**
+     * If the server throws an error, this gets called
+     * @param {Error} error
+     */
     onError(error) {
         console.log(`server error:\n${error.stack}`);
-        this._server.close();
+        this.server.close();
     }
 
+    /**
+     * When the server first starts up
+     */
     onListening() {
-        const address = this._server.address();
+        const address = this.server.address();
         console.log(`server listening ${address.address}:${address.port}`);
+    }
+
+    /**
+     *
+     * @param {String} ip
+     * @returns {ReliabilityLayer}
+     */
+    getClient(ip) {
+        return this.connections[ip];
     }
 }
 
