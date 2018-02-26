@@ -50,6 +50,7 @@ class RakServer {
             }
             catch(e) {
                 console.warn("Something went wrong while handling packet! " + e.message);
+                console.info(e.stack);
             }
         });
 
@@ -69,10 +70,9 @@ class RakServer {
         if(data.length() === 2) { //meaning there isnt an open connection yet...
 
             let messageId = data.readByte();
-            //console.log(RakMessages[messageId] + ': 0x' + messageId.toString(16) + ' (' + messageId + ')');
 
             if(messageId === RakMessages.ID_OPEN_CONNECTION_REQUEST) {
-                this.connections[senderInfo.address] = (new ReliabilityLayer());
+                this.connections[senderInfo.address] = (new ReliabilityLayer(this, senderInfo));
                 let ret = Buffer.alloc(1);
                 ret.writeInt8(RakMessages.ID_OPEN_CONNECTION_REPLY, 0);
                 this.server.send(ret, senderInfo.port, senderInfo.address);

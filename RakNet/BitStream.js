@@ -8,12 +8,12 @@ class BitStream {
      */
     constructor(data = undefined) {
         if(data !== undefined) {
-            this._data = data;
+            this.data = data;
         }
         else {
-            this._data = Buffer.alloc(0);
+            this.data = Buffer.alloc(0);
         }
-        this._byteCount = this._data.toString().length;
+        this._byteCount = this.data.toString().length;
         //for reading data
         this._rBytePos = 0;
         this._rBitPos = 7;
@@ -22,7 +22,7 @@ class BitStream {
         this._wBitPos = 7;
         this._mask = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80];
 
-        this._byte = this._byteCount ? this._data.readUInt8(0) : undefined;
+        this._byte = this._byteCount ? this.data.readUInt8(0) : undefined;
     }
 
     /**
@@ -48,7 +48,7 @@ class BitStream {
     readBit() {
         if (this._rBytePos >= this._byteCount) throw new Error("Reached end of stream!");
 
-        let byte = this._data.readUInt8(this._rBytePos);
+        let byte = this.data.readUInt8(this._rBytePos);
         let bit = (byte & this._mask[this._rBitPos]) >> this._rBitPos;
         if (--this._rBitPos === -1) {
             this._rBitPos = 7;
@@ -69,25 +69,25 @@ class BitStream {
         if(this._wBitPos === 7) {
 
             //increase the buffer size...
-            let old = this._data;
-            this._data = Buffer.alloc(this._wBytePos + 1);
+            let old = this.data;
+            this.data = Buffer.alloc(this._wBytePos + 1);
             this._byteCount = this._wBytePos + 1;
 
             for(let i = 0; i < this._wBytePos; i ++) {
-                this._data.writeUInt8(old.readUInt8(i), i); //copy over into new Buffer
+                this.data.writeUInt8(old.readUInt8(i), i); //copy over into new Buffer
             }
 
-            this._data.writeUInt8(0, this._wBytePos);
+            this.data.writeUInt8(0, this._wBytePos);
 
         }
         //now we need to get the current byte...
-        let byte = this._data.readUInt8(this._wBytePos);
+        let byte = this.data.readUInt8(this._wBytePos);
 
         //set the bit
         byte |= b << this._wBitPos;
 
         //write the byte
-        this._data.writeUInt8(byte, this._wBytePos);
+        this.data.writeUInt8(byte, this._wBytePos);
 
         //move to next bit
         this._wBitPos --;
@@ -106,13 +106,29 @@ class BitStream {
      */
     readBits(n) {
         let val = 0;
-        if(this._rBytePos < this._byteCount) this._byte = this._data.readUInt8(this._rBytePos);
+        if(this._rBytePos < this._byteCount) this._byte = this.data.readUInt8(this._rBytePos);
 
         while (n--) {
             let bit = this.readBit();
             val = (val << 1) | bit;
         }
         return val;
+    }
+
+    /**
+     * Writes number to stream with a certain amount of bits
+     * @param {Number} n The number to write to the stream
+     * @param {Number} b The number of bits to write
+     */
+    writeBits(n, b) {
+        for(let i = b; i > 0; i --) {
+            let temp = (n >> (i - 1)) & 0x01;
+            if(temp === 1) {
+                this.writeBit(true);
+            } else {
+                this.writeBit(false);
+            }
+        }
     }
 
     /**
@@ -178,7 +194,7 @@ class BitStream {
      * @returns {Number}
      */
     readByteOffset(o) {
-        return this._data.readUInt8(o);
+        return this.data.readUInt8(o);
     }
 
     /**
@@ -219,15 +235,15 @@ class BitStream {
      */
     writeByteOffset(n, o) {
         if(o + 1> this.length()) { //we are trying to write outside the current size... resizing to fix...
-            this._data = Buffer.alloc(o + 1, 0);
+            this.data = Buffer.alloc(o + 1, 0);
             this._byteCount = this._wBytePos + 1;
 
             for(let i = 0; i < this._wBytePos; i ++) {
-                this._data.writeUInt8(old.readUInt8(i), i); //copy over into new Buffer
+                this.data.writeUInt8(old.readUInt8(i), i); //copy over into new Buffer
             }
             this._byteCount = o + 1;
         }
-        this._data.writeUInt8(n, o);
+        this.data.writeUInt8(n, o);
     }
 
     /**
@@ -276,6 +292,14 @@ class BitStream {
     }
 
     /**
+     * Writes a compressed short to this stream
+     * @param {Number} n The short to compress
+     */
+    writeCompressedShort(n) {
+        this.writeCompressed(n, 2);
+    }
+
+    /**
      * Reads a signed short from the stream
      * @returns {Number}
      */
@@ -305,6 +329,14 @@ class BitStream {
     writeLong(n) {
         this.writeShort(n & 0xffff); //write the lower two bytes...
         this.writeShort((n & 0xffff0000) >>> 16); //write the top two bytes
+    }
+
+    /**
+     * Writes a compressed long to this stream
+     * @param {Number} n The long to compress and write to to this stream
+     */
+    writeCompressedLong(n) {
+        this.writeCompressed(n, 4);
     }
 
     /**
@@ -380,12 +412,63 @@ class BitStream {
     }
 
     /**
-     * Aligns the current reading bit to a byte
+     *
+     * @param {Number} data The number to write
+     * @param {Number} size The number of bytes to write it in
+     */
+    writeCompressed(data, size) {
+        let currentByte = size - 1;
+        let mask = [
+            0xFF,
+            0XFF00,
+            0xFF0000,
+            0xFF000000,
+            0xFF00000000,
+            0xFF0000000000,
+            0xFF000000000000,
+            0xFF00000000000000
+        ];
+
+
+        while(currentByte > 0) {
+            let zero = ((data & mask[currentByte]) >> currentByte) === 0;
+            this.writeBit(zero);
+            if(!zero) {
+                // Now we write all the bits from beginning to the current byte
+                for(let i = 0; i < currentByte + 1; i ++) {
+                    this.writeByte((data & mask[i]) >> i);
+                }
+                return;
+            }
+            currentByte --;
+        }
+
+        let zero = (data & 0xF0) === 0;
+        this.writeBit(zero);
+        if(!zero) {
+            this.writeBits(data & 0xF0 >> 4, 4);
+        } else {
+            this.writeByte(data & 0xFF);
+        }
+    }
+
+    /**
+     * Aligns the current reading bit to the next available byte
      */
     alignRead() {
         if(this._rBitPos !== 7) {
             this._rBitPos = 7;
             this._rBytePos ++;
+        }
+    }
+
+    /**
+     * Aligns the current writing bit to the next available byte
+     */
+    alignWrite() {
+        if(this._wBitPos !== 7) {
+            this._wBitPos = 7;
+            this._wBytePos ++;
         }
     }
 
@@ -427,7 +510,7 @@ class BitStream {
         ];
 
         for(let i = 0; i < this._byteCount; i ++) {
-            let byte = this._data.readUInt8(i);
+            let byte = this.data.readUInt8(i);
             let partone = (byte & 0xF0) >> 4;
             let parttwo = byte & 0x0F;
 
@@ -436,6 +519,15 @@ class BitStream {
                     let bit = (byte & this._mask[j]) >> j;
                     if(j === this._rBitPos) {
                         output += " -> "
+                    }
+                    output += bit;
+                }
+                output += ' ';
+            } else if(i === this._wBytePos) {
+                for(let j = 7; j >= 0; j--) {
+                    let bit = (byte & this._mask[j]) >> j;
+                    if(j === this._wBitPos) {
+                        output += " <- "
                     }
                     output += bit;
                 }
@@ -465,12 +557,12 @@ function ord (string) {
     //   returns 1: 75
     //   example 2: ord('\uD800\uDC00'); // surrogate pair to create a single Unicode character
     //   returns 2: 65536
-    var str = string + ''
-    var code = str.charCodeAt(0)
+    let str = string + '';
+    let code = str.charCodeAt(0);
     if (code >= 0xD800 && code <= 0xDBFF) {
         // High surrogate (could change last hex to 0xDB7F to treat
         // high private surrogates as single characters)
-        var hi = code
+        let hi = code;
         if (str.length === 1) {
             // This is just a high surrogate with no following low surrogate,
             // so we return its value;
@@ -478,14 +570,14 @@ function ord (string) {
             // we could also throw an error as it is not a complete character,
             // but someone may want to know
         }
-        var low = str.charCodeAt(1)
+        let low = str.charCodeAt(1);
         return ((hi - 0xD800) * 0x400) + (low - 0xDC00) + 0x10000
     }
     if (code >= 0xDC00 && code <= 0xDFFF) {
         // Low surrogate
         // This is just a low surrogate with no preceding high surrogate,
         // so we return its value;
-        return code
+        return code;
         // we could also throw an error as it is not a complete character,
         // but someone may want to know
     }
