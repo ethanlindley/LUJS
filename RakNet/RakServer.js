@@ -12,10 +12,11 @@ const MessageHandler = require('../Handles/MessageHandler.js');
 class RakServer {
     /**
      *
+     * @param {String} ip
      * @param {Number} port
      * @param {String} password
      */
-    constructor(port, password) {
+    constructor(ip, port, password) {
         /**
          *
          * @type {Array<ReliabilityLayer>}
@@ -39,6 +40,12 @@ class RakServer {
          */
         this.handles = [];
 
+        /**
+         * The start time of the server
+         * @type {number}
+         */
+        this.startTime = Date.now();
+
         this.server.on('error', (err) => {
             this.onError(err);
         });
@@ -50,6 +57,7 @@ class RakServer {
             }
             catch(e) {
                 console.warn("Something went wrong while handling packet! " + e.message);
+                console.info(data.toBinaryString());
                 console.info(e.stack);
             }
         });
@@ -58,7 +66,7 @@ class RakServer {
             this.onListening();
         });
 
-        this.server.bind(port);
+        this.server.bind(port, ip);
     }
 
     /**
@@ -72,7 +80,7 @@ class RakServer {
             let messageId = data.readByte();
 
             if(messageId === RakMessages.ID_OPEN_CONNECTION_REQUEST) {
-                this.connections[senderInfo.address] = (new ReliabilityLayer(this, senderInfo));
+                this.connections[senderInfo.address] = (new ReliabilityLayer(this.server, senderInfo));
                 let ret = Buffer.alloc(1);
                 ret.writeInt8(RakMessages.ID_OPEN_CONNECTION_REPLY, 0);
                 this.server.send(ret, senderInfo.port, senderInfo.address);
@@ -106,7 +114,6 @@ class RakServer {
      * @param {Object} senderInfo
      */
     onPacket(packet, senderInfo) {
-
         let type = packet.readByte();
         let handled = false;
 

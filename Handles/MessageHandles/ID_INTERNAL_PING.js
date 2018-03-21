@@ -5,13 +5,12 @@
 const RakMessages = require('../../RakNet/RakMessages.js');
 const BitStream = require('../../RakNet/BitStream.js');
 const MessageHandler = require('../MessageHandler.js');
-const inet_aton = require('../../Helpers/inet_aton.js');
 const {ReliabilityLayer, Reliability} = require('../../Raknet/ReliabilityLayer.js');
 
-class ID_CONNECTION_REQUEST_HANDLE extends MessageHandler {
+class ID_INTERNAL_PING_HANDLE extends MessageHandler {
     constructor() {
         super();
-        this.type = RakMessages.ID_CONNECTION_REQUEST;
+        this.type = RakMessages.ID_INTERNAL_PING;
         /**
          *
          * @param {RakServer} server
@@ -20,23 +19,15 @@ class ID_CONNECTION_REQUEST_HANDLE extends MessageHandler {
          */
         this.handle = function(server, packet, user) {
             let client = server.getClient(user.address);
-            let password = "";
-            while(!packet.allRead()) {
-                password += String.fromCharCode(packet.readByte());
-            }
+            let ping = packet.readLong();
 
-            if(password === server.password) {
-                let response = new BitStream();
-                response.writeByte(RakMessages.ID_CONNECTION_REQUEST_ACCEPTED);
-                response.writeBitStream(inet_aton(user.address));
-                response.writeShort(user.port);
-                response.writeShort(0);
-                response.writeBitStream(inet_aton(server.server.address().address));
-                response.writeShort(server.server.address().port);
-                client.send(response, Reliability.RELIABLE);
-            }
+            let response = new BitStream();
+            response.writeByte(RakMessages.ID_CONNECTED_PONG);
+            response.writeLong(ping);
+            response.writeLong(Date.now() - server.startTime);
+            client.send(response, Reliability.UNRELIABLE);
         }
     }
 }
 
-module.exports = ID_CONNECTION_REQUEST_HANDLE;
+module.exports = ID_INTERNAL_PING_HANDLE;

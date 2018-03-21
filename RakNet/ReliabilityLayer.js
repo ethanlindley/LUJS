@@ -38,7 +38,7 @@ class ReliabilityLayer {
         this.last = Date.now();
         this.remoteSystemTime = 0;
         this.resends = []; //i assume to keep track of what messages needed to be resent?
-        this.acks = [];
+        this.acks = new RangeList();
         this.queue = [];
         this.sequencedReadIndex = 0;
         this.sequencedWriteIndex = 0;
@@ -71,7 +71,6 @@ class ReliabilityLayer {
      */
     handle_data_header(data) {
         if (data.readBit()) { //if there are acks...
-            console.log("Has acks!");
             let yeOldenTime = data.readLong();
             let rtt = (Date.now() - this.last) / 1000 - yeOldenTime / 1000;
             this.last = Date.now();
@@ -112,19 +111,16 @@ class ReliabilityLayer {
         while (!data.allRead()) {
 
             let messageNumber = data.readLong();
-            //console.log("Message Number: " + messageNumber);
+
             let reliability = data.readBits(3);
             assert(reliability !== Reliability.RELIABLE_SEQUENCED, "Got Reliable Sequenced! This is not used!");
-            //console.log("Reliability: " + reliability);
 
             let orderingChannel;
             let orderingIndex;
             if (reliability === Reliability.UNRELIABLE_SEQUENCED || reliability === Reliability.RELIABLE_ORDERED) {
                 orderingChannel = data.readBits(5);
-                //console.log("Ordering Channel: " + orderingChannel);
                 assert(orderingChannel === 0, "Ordering channel not 0! Error in reading packet!");
                 orderingIndex = data.readLong();
-                //console.log("Ordering index: " + orderingIndex);
             }
 
             let isSplit = data.readBit();
@@ -133,11 +129,8 @@ class ReliabilityLayer {
             let splitPacketCount;
             if (isSplit) { //if the packet is split
                 splitPacketId = data.readShort();
-                //console.log("Split Packet ID: " + splitPacketId);
                 splitPacketIndex = data.readCompressed(4).readLong();
-                //console.log("Split Packet Index: " + splitPacketIndex);
                 splitPacketCount = data.readCompressed(4).readLong();
-                //console.log("Split Packet Count: " + splitPacketCount);
 
                 if (this.queue[splitPacketId] === undefined) {
                     this.queue[splitPacketId] = [splitPacketCount];
@@ -145,13 +138,17 @@ class ReliabilityLayer {
             }
 
             let length = data.readCompressed(2).readShort();
-            //console.log("Packet is " + length + " bits long");
+
             data.alignRead();
 
-            let packet = data.readBytes(Math.ceil(length / 8));
+            let packet = new BitStream(); //data.readBytes(Math.ceil(length / 8));
+            while(length--) {
+                packet.writeBit(data.readBit() === 1);
+            }
+
 
             if (reliability === Reliability.RELIABLE || reliability === Reliability.RELIABLE_ORDERED) {
-                this.acks.push(messageNumber);
+                this.acks.add(messageNumber);
             }
 
             if (isSplit) {
@@ -186,20 +183,16 @@ class ReliabilityLayer {
                 if (orderingIndex !== undefined && orderingChannel !== undefined) {
 
                     if (orderingIndex === this.orderedReadIndex) {
-                        //console.log("we got one");
                         this.orderedReadIndex++;
                         let ord = orderingIndex + 1;
-                        //console.log("Releasing ordered packet at " + ord);
                         for (let i = ord; i < this.orderedReadIndex; i++) {
 
                         }
                     } else if (orderingIndex < this.orderedReadIndex) {
-                        //console.warn('Packet was duplicate!');
                         continue;
                     } else {
                         // We can't release this packet because we are waiting for an earlier one?
                         this.outOfOrderPackets[orderingIndex] = packet;
-                        //console.info('Found packet at ' + orderingIndex);
                     }
                 }
             }
@@ -252,6 +245,15 @@ class ReliabilityLayer {
 
             this.sendMessage(packet.packet, index, packet.reliability, undefined, undefined);
         }
+
+        if(!this.acks.isEmpty()) {
+            let send = new BitStream();
+            send.writeBit(true);
+            send.writeLong(this.remoteSystemTime);
+            send.writeBitStream(this.acks.serialize());
+            this.acks.empty();
+            this.server.send(send.data, this.connection.port, this.connection.address);
+        }
     }
 
     /**
@@ -263,48 +265,49 @@ class ReliabilityLayer {
      * @param {Object} splitPacketInfo
      */
     sendMessage(data, messageNumber, reliability, index, splitPacketInfo) {
-        let toSend = new BitStream();
-        toSend.writeBit(this.acks.length === 0);
-        if (this.acks.length === 0) {
-            // TODO: Add acks
+        let send = new BitStream();
+        send.writeBit(!this.acks.isEmpty());
+        if (!this.acks.isEmpty()) {
+            send.writeLong(this.remoteSystemTime);
+            send.writeBitStream(this.acks.serialize());
+            this.acks.empty();
         }
 
         assert(ReliabilityLayer.packetHeaderLength(reliability, splitPacketInfo !== undefined) + data.length() <= MTU_SIZE - UDP_HEADER_SIZE, 'Packet sent was too large!');
 
         // TODO: Actually keep track of system time
         let hasRemoteSystemTime = true;
-        toSend.writeBit(hasRemoteSystemTime);
-        toSend.writeLong(0);
+        send.writeBit(hasRemoteSystemTime);
+        send.writeLong(this.remoteSystemTime);
 
         // Write the message "index"
-        toSend.writeLong(messageNumber);
+        send.writeLong(messageNumber);
 
         // Write the reliability here
-        toSend.writeBits(reliability, 3);
+        send.writeBits(reliability, 3);
 
         // If this packet needs the index because of its reliability
         if (reliability === Reliability.UNRELIABLE_SEQUENCED || reliability === Reliability.RELIABLE_ORDERED) {
-            toSend.writeBits(0, 5);
-            toSend.writeLong(index);
+            send.writeBits(0, 5);
+            send.writeLong(index);
         }
+
+        send.writeBit(splitPacketInfo !== undefined);
 
         if (splitPacketInfo !== undefined) {
-            toSend.writeShort(splitPacketInfo.id);
-            toSend.writeCompressedLong(splitPacketInfo.index);
-            toSend.writeCompressedLong(splitPacketInfo.count);
+            send.writeShort(splitPacketInfo.id);
+            send.writeCompressedLong(splitPacketInfo.index);
+            send.writeCompressedLong(splitPacketInfo.count);
+        }
+        send.writeCompressedShort(data.length() * 8);
+
+        send.alignWrite();
+
+        for(let i = 0; i < data.length(); i ++) {
+            send.writeByte(data.readByte());
         }
 
-        toSend.writeCompressedShort(data.length() * 8);
-
-        toSend.alignWrite();
-
-        while(!data.allRead()) {
-            toSend.writeByte(data.readByte());
-        }
-
-        console.log(toSend.toBinaryString());
-
-        //this.server.send(toSend.data, this.connection.port, this.connection.address); // Sends actual data to client here
+        this.server.send(send.data, this.connection.port, this.connection.address); // Sends actual data to client here
     }
 
     /**

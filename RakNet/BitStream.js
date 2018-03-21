@@ -34,6 +34,14 @@ class BitStream {
     }
 
     /**
+     * Gets the number of bits in this stream
+     * @returns {Number}
+     */
+    bits() {
+        return this._wBytePos * 8 + (8 - this._wBitPos) - 1;
+    }
+
+    /**
      * Returns true if we are at the end of the stream
      * @returns {Boolean}
      */
@@ -46,7 +54,10 @@ class BitStream {
      * @returns {Number}
      */
     readBit() {
-        if (this._rBytePos >= this._byteCount) throw new Error("Reached end of stream!");
+        if (this._rBytePos >= this._byteCount) {
+            this._wBytePos = this._rBytePos;
+            this.writeByte(0);
+        }
 
         let byte = this.data.readUInt8(this._rBytePos);
         let bit = (byte & this._mask[this._rBitPos]) >> this._rBitPos;
@@ -204,7 +215,7 @@ class BitStream {
      */
     readBytes(n) {
         let val = new BitStream();
-        while(n--) {
+        while(n-- && this._rBytePos < this.length()) {
             val.writeByte(this.readByte());
         }
         return val;
@@ -371,21 +382,31 @@ class BitStream {
     }
 
     /**
+     * Writes a BitStream to this BitStream
+     * @param {BitStream} bs
+     */
+    writeBitStream(bs) {
+        for(let i = 0; i < bs.bits(); i++) {
+            this.writeBit(bs.readBit() === 1);
+        }
+    }
+
+    /**
      * Reads compressed data from the stream
      * @param {Number} size The size of the data to read
      * @returns {BitStream}
      */
     readCompressed(size) {
         let currentByte = size - 1;
+        let ret = new BitStream();
 
         while(currentByte > 0) {
             let b = this.readBit();
-            if(b === undefined) return undefined;
 
             if(b) {
                 currentByte --;
             } else {
-                let ret = new BitStream();
+
                 for(let i = 0; i < size - currentByte - 1; i++) {
                     ret.writeByte(0);
                 }
@@ -397,9 +418,7 @@ class BitStream {
         }
 
         let b = this.readBit();
-        if(b === undefined) return undefined;
 
-        let ret = new BitStream();
         if(b) {
             ret.writeByte(this.readBits(4) << 4 && 0xF0);
         } else {
@@ -431,7 +450,7 @@ class BitStream {
 
 
         while(currentByte > 0) {
-            let zero = ((data & mask[currentByte]) >> currentByte) === 0;
+            let zero = (data & mask[currentByte]) === 0;
             this.writeBit(zero);
             if(!zero) {
                 // Now we write all the bits from beginning to the current byte
@@ -445,7 +464,7 @@ class BitStream {
 
         let zero = (data & 0xF0) === 0;
         this.writeBit(zero);
-        if(!zero) {
+        if(zero) {
             this.writeBits(data & 0xF0 >> 4, 4);
         } else {
             this.writeByte(data & 0xFF);
@@ -539,6 +558,13 @@ class BitStream {
 
         }
         return output;
+    }
+
+    /**
+     * Returns the Hex representation of this BitStream
+     */
+    toHexString() {
+
     }
 }
 

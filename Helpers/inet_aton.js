@@ -1,17 +1,19 @@
+const BitStream = require('../RakNet/BitStream');
+
 /**
  *
  * @param {string} ip
- * @returns {Number}
+ * @returns {BitStream}
  */
 function inet_aton(ip) {
     let bytes = ip.split('.');
-    let buffer = Buffer.alloc(4);
+    let bs = new BitStream();
 
     for(let i = 0; i < 4; i ++) {
-        buffer.writeUInt8(bytes[i], i);
+        bs.writeByte(parseInt(bytes[i]));
     }
 
-    return buffer.readUInt32BE(0);
+    return bs;
 }
 
 module.exports = inet_aton;

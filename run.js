@@ -1,6 +1,8 @@
-const RakServer = require('./RakNet/RakServer.js');
+// TODO: Add something that automatically updates files from the repo
 
-let server = new RakServer(1001, "3.25 ND");
+// Run the LU server...
+const RakServer = require('./RakNet/RakServer.js');
+let server = new RakServer("127.0.0.1", 1001, "3.25 ND");
 
 /**
  * Start dynamically adding modules for handling messages
@@ -12,3 +14,7 @@ require("fs").readdirSync(normalizedPath).forEach(function(file) {
     handles.push(require("./Handles/MessageHandles/" + file));
 });
 server.handles = handles;
+
+// TODO: At some point I want an API server running...
+
+// TODO: I also want Discord Rich Presence Integration?
