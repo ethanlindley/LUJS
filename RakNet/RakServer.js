@@ -18,6 +18,18 @@ class RakServer {
      */
     constructor(ip, port, password) {
         /**
+         * The IP of this server
+         * @type {String}
+         */
+        this.ip = ip;
+
+        /**
+         * The port this server is running off of
+         * @type {Number}
+         */
+        this.port = port;
+
+        /**
          *
          * @type {Array<ReliabilityLayer>}
          */

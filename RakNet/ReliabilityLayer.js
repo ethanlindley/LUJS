@@ -220,6 +220,7 @@ class ReliabilityLayer {
 
         if (ReliabilityLayer.packetHeaderLength(reliability, false) + packet.length() >= MTU_SIZE - UDP_HEADER_SIZE) {
             // TODO: Add a way to split packets and iterate through them to add them to the queue
+            console.info("This packet needs to be split up!");
         } else {
             this.sends.push({
                 'packet': packet,
@@ -236,7 +237,8 @@ class ReliabilityLayer {
     sendLoop() {
 
         while (this.sends.length > 0) {
-            if (this.packetsSent > this.congestionWindow) break;
+            // TODO: Need to actually do resends for my own packets. This is related
+            // if (this.packetsSent > this.congestionWindow) break;
             let packet = this.sends.pop();
 
             this.packetsSent++;

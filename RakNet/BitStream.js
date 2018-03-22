@@ -472,6 +472,32 @@ class BitStream {
     }
 
     /**
+     * Reads a string from the stream
+     * @returns {string}
+     */
+    readString() {
+        let text = "";
+        let temp = this.readByte();
+        while(temp !== 0) {
+            temp = String.fromCharCode(temp);
+            text += temp;
+            temp = this.readByte();
+        }
+        return text;
+    }
+
+    /**
+     *
+     * @param {String}string
+     */
+    writeString(string) {
+        for(let i = 0; i < string.length; i++) {
+            this.writeByte(string.charCodeAt(i));
+        }
+        this.writeByte(0); // Null terminate string
+    }
+
+    /**
      * Aligns the current reading bit to the next available byte
      */
     alignRead() {
