@@ -455,7 +455,7 @@ class BitStream {
             if(!zero) {
                 // Now we write all the bits from beginning to the current byte
                 for(let i = 0; i < currentByte + 1; i ++) {
-                    this.writeByte((data & mask[i]) >> i);
+                    this.writeByte((data & mask[i]) >> i * 8);
                 }
                 return;
             }
@@ -491,10 +491,54 @@ class BitStream {
      * @param {String}string
      */
     writeString(string) {
+        while(string.length < 33) {
+            string += '\0';
+        }
+
         for(let i = 0; i < string.length; i++) {
             this.writeByte(string.charCodeAt(i));
         }
-        this.writeByte(0); // Null terminate string
+    }
+
+    /**
+     *
+     * @param {Number} [size]
+     * @returns {String}
+     */
+    readWString(size) {
+        if(size === undefined) {
+            size = 33;
+        }
+        let write = true;
+        let text = "";
+        let temp = this.readShort();
+        write = temp !== 0;
+        for(let i = 0; i < size - 1; i ++) {
+            if(write) {
+                temp = String.fromCharCode(temp);
+                text += temp;
+                temp = this.readShort();
+                write = temp !== 0;
+            } else {
+                temp = this.readShort();
+            }
+        }
+        return text;
+    }
+
+    /**
+     *
+     * @param {String} string
+     */
+    writeWString(string) {
+        while(string.length < 33) {
+            string += '\0';
+        }
+
+        for(let i = 0; i < string.length; i++) {
+            this.writeByte(string.charCodeAt(i));
+            this.writeByte(0);
+        }
     }
 
     /**

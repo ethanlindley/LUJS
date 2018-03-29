@@ -119,7 +119,7 @@ class ReliabilityLayer {
             let orderingIndex;
             if (reliability === Reliability.UNRELIABLE_SEQUENCED || reliability === Reliability.RELIABLE_ORDERED) {
                 orderingChannel = data.readBits(5);
-                assert(orderingChannel === 0, "Ordering channel not 0! Error in reading packet!");
+                //assert(orderingChannel === 0, "Ordering channel not 0! Error in reading packet! Ordering Channel was " + orderingChannel);
                 orderingIndex = data.readLong();
             }
 
@@ -268,8 +268,8 @@ class ReliabilityLayer {
      */
     sendMessage(data, messageNumber, reliability, index, splitPacketInfo) {
         let send = new BitStream();
-        send.writeBit(!this.acks.isEmpty());
-        if (!this.acks.isEmpty()) {
+        send.writeBit(!this.acks.isEmpty() && false);
+        if (!this.acks.isEmpty() && false) {
             send.writeLong(this.remoteSystemTime);
             send.writeBitStream(this.acks.serialize());
             this.acks.empty();

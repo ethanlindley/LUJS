@@ -69,8 +69,6 @@ class RakServer {
             }
             catch(e) {
                 console.warn("Something went wrong while handling packet! " + e.message);
-                console.info(data.toBinaryString());
-                console.info(e.stack);
             }
         });
 

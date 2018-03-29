@@ -51,16 +51,16 @@ class ID_USER_PACKET_ENUM_HANDLE extends MessageHandler {
 
                 switch (remoteConnectionType) {
                     case LURemoteConnectionType.general:
-                        console.log("   ID: " + LUGeneralMessageType.keys(packetID));
+                        console.log("   ID: " + LUGeneralMessageType.key(packetID));
                         break;
                     case LURemoteConnectionType.authentication:
-                        console.log("   ID: " + LUAthenticationMessageType.keys(packetID));
+                        console.log("   ID: " + LUAthenticationMessageType.key(packetID));
                         break;
                     case LURemoteConnectionType.chat:
-                        console.log("   ID: " + LUChatMessageType.keys(packetID));
+                        console.log("   ID: " + LUChatMessageType.key(packetID));
                         break;
                     case LURemoteConnectionType.server:
-                        console.log("   ID: " + LUServerMessageType.keys(packetID));
+                        console.log("   ID: " + LUServerMessageType.key(packetID));
                         break;
                     case LURemoteConnectionType.client:
                         break;

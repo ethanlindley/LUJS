@@ -5,40 +5,37 @@
 const RakMessages = require('../../RakNet/RakMessages.js');
 const UserMessageHandler = require('../UserMessageHandler');
 const LURemoteConnectionType = require('../../LU/Message Types/LURemoteConnectionType');
-const LUGeneralMessageType = require('../../LU/Message Types/LUGeneralMessageType');
+const LUAuthenticationMessageType = require('../../LU/Message Types/LUAuthenticationMessageType');
 const VersionConfirm = require('../../LU/Messages/VersionConfirm');
 const BitStream = require('../../RakNet/BitStream');
 const {ReliabilityLayer, Reliability} = require('../../Raknet/ReliabilityLayer.js');
 
-class MSG_SERVER_VERSION_CONFIRM extends UserMessageHandler {
+class MSG_AUTH_LOGIN_REQUEST extends UserMessageHandler {
     constructor() {
         super();
-        this.remoteConnectionType = LURemoteConnectionType.general;
-        this.messageType = LUGeneralMessageType.MSG_SERVER_VERSION_CONFIRM;
+        this.remoteConnectionType = LURemoteConnectionType.authentication;
+        this.messageType = LUAuthenticationMessageType.MSG_AUTH_LOGIN_REQUEST;
 
         this.handle = function(server, packet, user) {
             let client = server.getClient(user.address);
-            let message = new VersionConfirm();
-            message.deserialize(packet);
-            message.unknown = 0x93;
-            message.remoteConnectionType = 4;
-            if(server.port === 1001) { // If this is an auth server
-                message.remoteConnectionType = 1;
-            }
-            message.processID = process.pid;
-            message.localPort = 0xffff;
-            message.localIP = server.ip;
 
-            // This needs to be brought into a method inside RakServer
+            let username = packet.readWString();
+            let password = packet.readWString(41);
+            let language = packet.readShort();
+            let unknown = packet.readByte();
+            let processInformation = packet.readWString(256);
+            let graphicsInformation = packet.readWString(128);
+
+
+            console.log(username);
+            console.log(password);
+            console.log(processInformation);
+            console.log(graphicsInformation);
+
             let send = new BitStream();
-            send.writeByte(RakMessages.ID_USER_PACKET_ENUM);
-            send.writeShort(LURemoteConnectionType.general);
-            send.writeLong(LUGeneralMessageType.MSG_SERVER_VERSION_CONFIRM);
-            send.writeByte(0);
-            message.serialize(send);
-            client.send(send, Reliability.RELIABLE_ORDERED);
+            //client.send(send, Reliability.RELIABLE_ORDERED);
         };
     }
 }
 
-module.exports = MSG_SERVER_VERSION_CONFIRM;
+module.exports = MSG_AUTH_LOGIN_REQUEST;
