@@ -16,6 +16,12 @@ class MSG_AUTH_LOGIN_REQUEST extends UserMessageHandler {
         this.remoteConnectionType = LURemoteConnectionType.authentication;
         this.messageType = LUAuthenticationMessageType.MSG_AUTH_LOGIN_REQUEST;
 
+        /**
+         *
+         * @param server
+         * @param {BitStream}packet
+         * @param user
+         */
         this.handle = function(server, packet, user) {
             let client = server.getClient(user.address);
 
@@ -25,12 +31,36 @@ class MSG_AUTH_LOGIN_REQUEST extends UserMessageHandler {
             let unknown = packet.readByte();
             let processInformation = packet.readWString(256);
             let graphicsInformation = packet.readWString(128);
+            let numberOfProcessors = packet.readLong();
+            let processorType = packet.readShort();
+            let processorLevel = packet.readShort();
+            let unknown2 = packet.readLong();
+
+            if(!packet.allRead()) {
+                let osMajorVersion = packet.readLong();
+                let osMinorVersion = packet.readLong();
+                let osBuildNumber = packet.readLong();
+                let osPlatformID = packet.readLong();
+            }
 
 
-            console.log(username);
-            console.log(password);
-            console.log(processInformation);
-            console.log(graphicsInformation);
+            User.findOne({
+                where: {username: username},
+            }).then(user => {
+                if(user === null) {
+                    // The user was not found
+                } else {
+
+                }
+
+                HardwareSurvey.create({
+                    process_information: processInformation,
+                    graphics_information: graphicsInformation,
+                    number_of_processors: numberOfProcessors,
+                    processor_type: processorType,
+                    processor_level: processorLevel,
+                });
+            });
 
             let send = new BitStream();
             //client.send(send, Reliability.RELIABLE_ORDERED);

@@ -1,11 +1,19 @@
 {
   "name": "lujs",
-  "version": "0.0.1",
-  "description": "",
-  "main": "run.js",
+  "version": "0.0.2",
+  "description": "A simple LEGO Universe server written in Node",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RaineBannister/LUJS"
+  },
+  "dependencies": {
+    "sequelize": "^4.37.5",
+    "sqlite3": "^4.0.0"
+  },
+  "author": "Raine Bannister",
   "license": "ISC"
 }
