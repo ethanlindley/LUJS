@@ -5,12 +5,13 @@
 const RakMessages = require('node-raknet/RakMessages.js');
 const BitStream = require('node-raknet/BitStream.js');
 const MessageHandler = require('../MessageHandler.js');
+const inet_aton = require('../../Helpers/inet_aton.js');
 const {ReliabilityLayer, Reliability} = require('node-raknet/ReliabilityLayer.js');
 
-class ID_INTERNAL_PING_HANDLE extends MessageHandler {
+class ID_CONNECTION_REQUEST_HANDLE extends MessageHandler {
     constructor() {
         super();
-        this.type = RakMessages.ID_INTERNAL_PING;
+        this.type = RakMessages.ID_DISCONNECTION_NOTIFICATION;
         /**
          *
          * @param {RakServer} server
@@ -18,16 +19,9 @@ class ID_INTERNAL_PING_HANDLE extends MessageHandler {
          * @param user
          */
         this.handle = function(server, packet, user) {
-            let client = server.getClient(user.address);
-            let ping = packet.readLong();
-
-            let response = new BitStream();
-            response.writeByte(RakMessages.ID_CONNECTED_PONG);
-            response.writeLong(ping);
-            response.writeLong(Date.now() - server.startTime);
-            client.send(response, Reliability.UNRELIABLE);
+            console.log("Client has disconnected");
         }
     }
 }
 
-module.exports = ID_INTERNAL_PING_HANDLE;
+module.exports = ID_CONNECTION_REQUEST_HANDLE;

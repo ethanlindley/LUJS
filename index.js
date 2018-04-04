@@ -1,7 +1,7 @@
 // TODO: Add something that automatically updates files from the repo
 
 // Run the LU server...
-const RakServer = require('./RakNet/RakServer.js');
+const RakServer = require('node-raknet/RakServer.js');
 let server = new RakServer("127.0.0.1", 1001, "3.25 ND");
 
 /**
