@@ -140,7 +140,7 @@ class RakServer {
         }
 
         if(!handled) {
-            console.log("Unhandled packet. ID: " + RakMessages.key(type));
+            console.log("Unhandled packet. ID: " + RakMessages.key(type) + " (" + type + ")");
         }
     }
 

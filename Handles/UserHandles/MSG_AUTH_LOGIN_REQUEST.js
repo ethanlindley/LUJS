@@ -6,9 +6,9 @@ const RakMessages = require('../../RakNet/RakMessages.js');
 const UserMessageHandler = require('../UserMessageHandler');
 const LURemoteConnectionType = require('../../LU/Message Types/LURemoteConnectionType');
 const LUAuthenticationMessageType = require('../../LU/Message Types/LUAuthenticationMessageType');
-const VersionConfirm = require('../../LU/Messages/VersionConfirm');
 const BitStream = require('../../RakNet/BitStream');
 const {ReliabilityLayer, Reliability} = require('../../Raknet/ReliabilityLayer.js');
+const {LoginInfo, LoginCodes} = require('../../LU/Messages/LoginInfo');
 
 class MSG_AUTH_LOGIN_REQUEST extends UserMessageHandler {
     constructor() {
@@ -43,7 +43,7 @@ class MSG_AUTH_LOGIN_REQUEST extends UserMessageHandler {
                 let osPlatformID = packet.readLong();
             }
 
-
+            let response = new LoginInfo();
             User.findOne({
                 where: {username: username},
             }).then(user => {
@@ -52,18 +52,39 @@ class MSG_AUTH_LOGIN_REQUEST extends UserMessageHandler {
                 } else {
 
                 }
-
-                HardwareSurvey.create({
-                    process_information: processInformation,
-                    graphics_information: graphicsInformation,
-                    number_of_processors: numberOfProcessors,
-                    processor_type: processorType,
-                    processor_level: processorLevel,
-                });
             });
 
+            HardwareSurvey.create({
+                process_information: processInformation,
+                graphics_information: graphicsInformation,
+                number_of_processors: numberOfProcessors,
+                processor_type: processorType,
+                processor_level: processorLevel,
+            });
+
+            response.code = LoginCodes.failedOne;
+            response.clientVersionMajor = 1;
+            response.clientVersionCurrent = 10;
+            response.clientVersionMinor = 64;
+            response.redirectIP = server.ip;
+            response.redirectPort = server.port;
+            response.chatIP = server.ip;
+            response.chatPort = server.port;
+            response.altIP = server.ip;
+            response.localization = 'US';
+            response.firstSubscription = false;
+            response.freeToPlay = false;
+            response.session = "asdfasdfasdfasdf";
+
             let send = new BitStream();
-            //client.send(send, Reliability.RELIABLE_ORDERED);
+            send.writeByte(RakMessages.ID_USER_PACKET_ENUM);
+            send.writeShort(LURemoteConnectionType.authentication);
+            send.writeLong(LUAuthenticationMessageType.MSG_AUTH_LOGIN_REQUEST);
+            send.writeByte(0);
+            response.serialize(send);
+
+            console.log(send.toBinaryString());
+            client.send(send, Reliability.RELIABLE_ORDERED);
         };
     }
 }

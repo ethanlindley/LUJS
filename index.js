@@ -23,7 +23,7 @@ server.handles = handles;
 
 // Setting up ORM
 const Sequelize = require('sequelize');
-global.rebuildDB = true;
+global.rebuildDB = false;
 
 // Set up connection information
 global.sequelize = new Sequelize('lujs', null, null, {

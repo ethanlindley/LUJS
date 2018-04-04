@@ -488,10 +488,14 @@ class BitStream {
 
     /**
      *
-     * @param {String}string
+     * @param {String} string
+     * @param {Number} [size]
      */
-    writeString(string) {
-        while(string.length < 33) {
+    writeString(string, size) {
+        if(size === undefined) {
+            size = 33;
+        }
+        while(string.length < size) {
             string += '\0';
         }
 
@@ -529,13 +533,15 @@ class BitStream {
     /**
      *
      * @param {String} string
+     * @param {Number} [size]
      */
-    writeWString(string) {
-        while(string.length < 33) {
+    writeWString(string, size) {
+        if(size === undefined) size = 33;
+        while(string.length < size) {
             string += '\0';
         }
 
-        for(let i = 0; i < string.length; i++) {
+        for(let i = 0; i < size; i++) {
             this.writeByte(string.charCodeAt(i));
             this.writeByte(0);
         }
