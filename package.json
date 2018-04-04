@@ -11,6 +11,7 @@
     "url": "https://github.com/RaineBannister/LUJS"
   },
   "dependencies": {
+    "inet-aton": "git+https://git@github.com/RaineBannister/inet-aton.git",
     "node-raknet": "git+https://git@github.com/RaineBannister/node-raknet.git",
     "sequelize": "^4.37.5",
     "sqlite3": "^4.0.0"

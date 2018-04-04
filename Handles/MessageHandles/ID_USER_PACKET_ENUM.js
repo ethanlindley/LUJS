@@ -4,7 +4,7 @@
  */
 const RakMessages = require('node-raknet/RakMessages.js');
 const BitStream = require('node-raknet/BitStream.js');
-const MessageHandler = require('../MessageHandler.js');
+const MessageHandler = require('node-raknet/MessageHandler.js');
 const LURemoteConnectionType = require('../../LU/Message Types/LURemoteConnectionType');
 const LUGeneralMessageType = require('../../LU/Message Types/LUGeneralMessageType');
 const LUAthenticationMessageType = require('../../LU/Message Types/LUAuthenticationMessageType');

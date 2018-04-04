@@ -4,7 +4,7 @@
  */
 const RakMessages = require('node-raknet/RakMessages.js');
 const BitStream = require('node-raknet/BitStream.js');
-const MessageHandler = require('../MessageHandler.js');
+const MessageHandler = require('node-raknet/MessageHandler.js');
 const {ReliabilityLayer, Reliability} = require('node-raknet/ReliabilityLayer.js');
 
 class ID_INTERNAL_PING_HANDLE extends MessageHandler {

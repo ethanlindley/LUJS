@@ -4,8 +4,8 @@
  */
 const RakMessages = require('node-raknet/RakMessages.js');
 const BitStream = require('node-raknet/BitStream.js');
-const MessageHandler = require('../MessageHandler.js');
-const inet_aton = require('../../Helpers/inet_aton.js');
+const MessageHandler = require('node-raknet/MessageHandler.js');
+const inet_aton = require('inet-aton');
 const {ReliabilityLayer, Reliability} = require('node-raknet/ReliabilityLayer.js');
 
 class ID_CONNECTION_REQUEST_HANDLE extends MessageHandler {
@@ -28,10 +28,22 @@ class ID_CONNECTION_REQUEST_HANDLE extends MessageHandler {
             if(password === server.password) {
                 let response = new BitStream();
                 response.writeByte(RakMessages.ID_CONNECTION_REQUEST_ACCEPTED);
-                response.writeBitStream(inet_aton(user.address));
+
+                let remoteAddress = inet_aton(user.address);
+                response.writeByte(remoteAddress[0]);
+                response.writeByte(remoteAddress[1]);
+                response.writeByte(remoteAddress[2]);
+                response.writeByte(remoteAddress[3]);
+
                 response.writeShort(user.port);
                 response.writeShort(0);
-                response.writeBitStream(inet_aton(server.server.address().address));
+
+                let localAddress = inet_aton(server.address);
+                response.writeByte(localAddress[0]);
+                response.writeByte(localAddress[1]);
+                response.writeByte(localAddress[2]);
+                response.writeByte(localAddress[3]);
+
                 response.writeShort(server.server.address().port);
                 client.send(response, Reliability.RELIABLE);
             }

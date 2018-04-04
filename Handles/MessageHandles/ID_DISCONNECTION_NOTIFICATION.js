@@ -4,8 +4,7 @@
  */
 const RakMessages = require('node-raknet/RakMessages.js');
 const BitStream = require('node-raknet/BitStream.js');
-const MessageHandler = require('../MessageHandler.js');
-const inet_aton = require('../../Helpers/inet_aton.js');
+const MessageHandler = require('node-raknet/MessageHandler.js');
 const {ReliabilityLayer, Reliability} = require('node-raknet/ReliabilityLayer.js');
 
 class ID_CONNECTION_REQUEST_HANDLE extends MessageHandler {
