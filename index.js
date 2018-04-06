@@ -19,11 +19,9 @@ server.handles = handles;
 
 // TODO: I also want Discord Rich Presence Integration?
 
-
-
 // Setting up ORM
 const Sequelize = require('sequelize');
-global.rebuildDB = false;
+global.rebuildDB = true;
 
 // Set up connection information
 global.sequelize = new Sequelize('lujs', null, null, {

@@ -38,7 +38,7 @@ class ID_CONNECTION_REQUEST_HANDLE extends MessageHandler {
                 response.writeShort(user.port);
                 response.writeShort(0);
 
-                let localAddress = inet_aton(server.address);
+                let localAddress = inet_aton(server.ip);
                 response.writeByte(localAddress[0]);
                 response.writeByte(localAddress[1]);
                 response.writeByte(localAddress[2]);

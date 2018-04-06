@@ -12,7 +12,7 @@ const {ReliabilityLayer, Reliability} = require('node-raknet/ReliabilityLayer.js
 const {LoginInfo, LoginCodes} = require('../../LU/Messages/LoginInfo');
 
 function rand(size) {
-    let chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+    let chars = "abcdefghijklmnopqrstuvwxyz1234567890";
     let ret = "";
     for(let i = 0; i < size; i ++) {
         ret += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -73,7 +73,7 @@ class MSG_AUTH_LOGIN_REQUEST extends UserMessageHandler {
                 processor_level: processorLevel,
             });
 
-            response.code = LoginCodes.badPassword;
+            response.code = LoginCodes.badPermissions;
             response.clientVersionMajor = 1;
             response.clientVersionCurrent = 10;
             response.clientVersionMinor = 64;
@@ -86,6 +86,7 @@ class MSG_AUTH_LOGIN_REQUEST extends UserMessageHandler {
             response.firstSubscription = false;
             response.freeToPlay = false;
             response.session = rand(32);
+            response.customErrorMessage = "Assembly is the best faction";
 
             let send = new BitStream();
             send.writeByte(RakMessages.ID_USER_PACKET_ENUM);
@@ -93,7 +94,6 @@ class MSG_AUTH_LOGIN_REQUEST extends UserMessageHandler {
             send.writeLong(LUClientMessageType.LOGIN_RESPONSE);
             send.writeByte(0);
             response.serialize(send);
-
             console.log(send.toBinaryString());
             client.send(send, Reliability.RELIABLE_ORDERED);
         };

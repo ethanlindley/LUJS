@@ -1,5 +1,5 @@
 const Message = require('../Message');
-const BitStream = require('../../RakNet/BitStream');
+const BitStream = require('node-raknet/BitStream');
 
 const LoginCodes = {
     failedOne: 0,
@@ -74,11 +74,11 @@ class LoginInfo extends Message {
         this.guid = stream.readString();
         this.unknown = stream.readLong();
         this.localization = stream.readString();
-        this.firstSubscription = stream.readBit();
-        this.freeToPlay = stream.readBit();
+        this.firstSubscription = stream.readByte();
+        this.freeToPlay = stream.readByte();
         this.unknown2 = stream.readLongLong();
         let customErrorMessageLength = stream.readShort();
-        this.customErrorMessage = stream.readString(customErrorMessageLength);
+        this.customErrorMessage = stream.readWString(customErrorMessageLength);
         let stampsLength = stream.readLong();
     }
 
@@ -103,12 +103,17 @@ class LoginInfo extends Message {
         stream.writeShort(this.clientVersionMinor);
 
         stream.writeWString(this.session);
+
         stream.writeString(this.redirectIP);
         stream.writeString(this.chatIP);
+
         stream.writeShort(this.redirectPort);
         stream.writeShort(this.chatPort);
+
         stream.writeString(this.altIP);
+
         stream.writeString(this.guid, 37);
+
         stream.writeLong(this.unknown);
         stream.writeString(this.localization, 3);
         stream.writeByte(this.firstSubscription);
@@ -117,6 +122,12 @@ class LoginInfo extends Message {
         stream.writeShort(this.customErrorMessage.length);
         stream.writeWString(this.customErrorMessage, this.customErrorMessage.length);
         stream.writeLong(this.stamps.length * 16 + 4);
+        for(let i = 0; i < this.stamps.length; i++) {
+            stream.writeLong(this.stamps[i].id);
+            stream.writeLong(this.stamps[i].num1);
+            stream.writeLong(this.stamps[i].num2);
+            stream.writeLong(this.stamps[i].num3);
+        }
     }
 }
 

@@ -1,5 +1,5 @@
 const Message = require('../Message');
-const BitStream = require('../../RakNet/BitStream');
+const BitStream = require('node-raknet/BitStream');
 
 class VersionConfirm extends Message {
 
