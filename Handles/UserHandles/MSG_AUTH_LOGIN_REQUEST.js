@@ -10,6 +10,7 @@ const LUClientMessageType = require('../../LU/Message Types/LUClientMessageType'
 const BitStream = require('node-raknet/BitStream');
 const {ReliabilityLayer, Reliability} = require('node-raknet/ReliabilityLayer.js');
 const {LoginInfo, LoginCodes} = require('../../LU/Messages/LoginInfo');
+const bcrypt = require('bcrypt');
 
 function rand(size) {
     let chars = "abcdefghijklmnopqrstuvwxyz1234567890";
@@ -54,48 +55,43 @@ class MSG_AUTH_LOGIN_REQUEST extends UserMessageHandler {
                 let osPlatformID = packet.readLong();
             }
 
-            let response = new LoginInfo();
             User.findOne({
                 where: {username: username},
             }).then(user => {
+                let response = new LoginInfo();
+
                 if(user === null) {
                     // The user was not found
+                    response.code = LoginCodes.badUsername;
                 } else {
-
+                    if(bcrypt.compareSync(password, user.password)) {
+                        response.code = LoginCodes.success;
+                    } else {
+                        response.code = LoginCodes.badPassword;
+                    }
                 }
+
+                response.clientVersionMajor = 1;
+                response.clientVersionCurrent = 10;
+                response.clientVersionMinor = 64;
+                response.redirectIP = server.ip;
+                response.redirectPort = 1002;
+                response.chatIP = server.ip;
+                response.chatPort = 1002;
+                response.altIP = server.ip;
+                response.localization = 'US';
+                response.firstSubscription = false;
+                response.freeToPlay = false;
+                response.session = rand(32);
+
+                let send = new BitStream();
+                send.writeByte(RakMessages.ID_USER_PACKET_ENUM);
+                send.writeShort(LURemoteConnectionType.client);
+                send.writeLong(LUClientMessageType.LOGIN_RESPONSE);
+                send.writeByte(0);
+                response.serialize(send);
+                client.send(send, Reliability.RELIABLE_ORDERED);
             });
-
-            HardwareSurvey.create({
-                process_information: processInformation,
-                graphics_information: graphicsInformation,
-                number_of_processors: numberOfProcessors,
-                processor_type: processorType,
-                processor_level: processorLevel,
-            });
-
-            response.code = LoginCodes.badPermissions;
-            response.clientVersionMajor = 1;
-            response.clientVersionCurrent = 10;
-            response.clientVersionMinor = 64;
-            response.redirectIP = server.ip;
-            response.redirectPort = server.port;
-            response.chatIP = server.ip;
-            response.chatPort = server.port;
-            response.altIP = server.ip;
-            response.localization = 'US';
-            response.firstSubscription = false;
-            response.freeToPlay = false;
-            response.session = rand(32);
-            response.customErrorMessage = "Assembly is the best faction";
-
-            let send = new BitStream();
-            send.writeByte(RakMessages.ID_USER_PACKET_ENUM);
-            send.writeShort(LURemoteConnectionType.client);
-            send.writeLong(LUClientMessageType.LOGIN_RESPONSE);
-            send.writeByte(0);
-            response.serialize(send);
-            console.log(send.toBinaryString());
-            client.send(send, Reliability.RELIABLE_ORDERED);
         };
     }
 }

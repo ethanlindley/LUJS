@@ -2,7 +2,8 @@
 
 // Run the LU server...
 const RakServer = require('node-raknet/RakServer.js');
-let server = new RakServer("127.0.0.1", 1001, "3.25 ND");
+let auth = new RakServer("127.0.0.1", 1001, "3.25 ND");
+let world = new RakServer("127.0.0.1", 1002, "3.25 ND");
 
 /**
  * Start dynamically adding modules for handling messages
@@ -13,7 +14,8 @@ let handles = [];
 require("fs").readdirSync(normalizedPath).forEach(function(file) {
     handles.push(require("./Handles/MessageHandles/" + file));
 });
-server.handles = handles;
+auth.handles = handles;
+world.handles = handles;
 
 // TODO: At some point I want an API server running...
 
@@ -21,7 +23,7 @@ server.handles = handles;
 
 // Setting up ORM
 const Sequelize = require('sequelize');
-global.rebuildDB = true;
+global.rebuildDB = false;
 
 // Set up connection information
 global.sequelize = new Sequelize('lujs', null, null, {
