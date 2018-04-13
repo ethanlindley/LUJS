@@ -57,15 +57,40 @@ class MSG_AUTH_LOGIN_REQUEST extends UserMessageHandler {
 
             User.findOne({
                 where: {username: username},
-            }).then(user => {
+            }).then(userModel => {
                 let response = new LoginInfo();
 
-                if(user === null) {
+                if(userModel === null) {
                     // The user was not found
                     response.code = LoginCodes.badUsername;
                 } else {
-                    if(bcrypt.compareSync(password, user.password)) {
+                    if(bcrypt.compareSync(password, userModel.password)) {
                         response.code = LoginCodes.success;
+
+                        // Find the world server acting as the char server
+                        let redirect = servers.findZone(0)[0];
+                        response.redirectIP = redirect.rakServer.ip;
+                        response.redirectPort = redirect.rakServer.port;
+                        response.chatIP = redirect.rakServer.ip;
+                        response.chatPort = redirect.rakServer.port;
+                        response.altIP = redirect.rakServer.ip;
+
+                        //Session stuff.
+                        // TODO: Check if the user already has a login from this ip, if so kill that session (and log out the other user logged in at some point)
+                        // TODO: Check to see if there is already an existing session for this user, if so, use it
+                        // TODO: Actually store this in the DB
+                        response.session = rand(32);
+                        let today = new Date();
+
+                        Session.create({
+                            key: response.session,
+                            start_time: today,
+                            end_time: new Date(today.getTime() + (24 * 60 * 60 * 1000)),
+                            ip: user.address,
+                            user_id: userModel.id
+                        })
+
+
                     } else {
                         response.code = LoginCodes.badPassword;
                     }
@@ -74,15 +99,11 @@ class MSG_AUTH_LOGIN_REQUEST extends UserMessageHandler {
                 response.clientVersionMajor = 1;
                 response.clientVersionCurrent = 10;
                 response.clientVersionMinor = 64;
-                response.redirectIP = server.ip;
-                response.redirectPort = 1002;
-                response.chatIP = server.ip;
-                response.chatPort = 1002;
-                response.altIP = server.ip;
                 response.localization = 'US';
+                //TODO: Actually get this from the DB
                 response.firstSubscription = false;
+                //TODO: Actually get this from the DB
                 response.freeToPlay = false;
-                response.session = rand(32);
 
                 let send = new BitStream();
                 send.writeByte(RakMessages.ID_USER_PACKET_ENUM);

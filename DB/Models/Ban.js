@@ -25,8 +25,8 @@ const Ban = sequelize.define('ban', {
 });
 
 Ban.sync({force: rebuildDB}).then(() => {
-    // Table created
-    console.log("Created Ban Table");
+    // Table loaded
+    console.log("Ban Table Loaded");
 });
 
 
