@@ -4,7 +4,7 @@
  */
 const RakMessages = require('node-raknet/RakMessages.js');
 const BitStream = require('node-raknet/BitStream.js');
-const MessageHandler = require('node-raknet/MessageHandler.js');
+const EventEmitter = require('events');
 const LURemoteConnectionType = require('../../LU/Message Types/LURemoteConnectionType');
 const LUGeneralMessageType = require('../../LU/Message Types/LUGeneralMessageType');
 const LUAthenticationMessageType = require('../../LU/Message Types/LUAuthenticationMessageType');
@@ -12,9 +12,35 @@ const LUChatMessageType = require('../../LU/Message Types/LUChatMessageType');
 const LUServerMessageType = require('../../Lu/Message Types/LUServerMessageType');
 const LUClientMessageType = require('../../LU/Message Types/LUClientMessageType');
 
-class ID_USER_PACKET_ENUM_HANDLE extends MessageHandler {
+/**
+ *
+ * @param {RakServer} server
+ */
+function ID_USER_PACKET_ENUM(server) {
+    server.userMessageHandler = new EventEmitter();
+
+    // Each module is responsible for registering for the event
+    let normalizedPath = require("path").join(__dirname, "../UserHandles");
+    require("fs").readdirSync(normalizedPath).forEach(function(file) {
+        let handle = require("../UserHandles/" + file);
+        handle(server.userMessageHandler);
+    });
+
+    server.on(String(RakMessages.ID_USER_PACKET_ENUM), function (packet, user) {
+        let remoteConnectionType = packet.readShort();
+        let packetID = packet.readLong();
+        let alwaysZero = packet.readByte();
+        if(this.userMessageHandler.listenerCount([remoteConnectionType,packetID].join()) > 0) {
+            this.userMessageHandler.emit([remoteConnectionType,packetID].join(), this, packet, user);
+        } else {
+            console.log(`No listeners found for: ${[remoteConnectionType,packetID].join()}`);
+        }
+    });
+}
+
+
+class ID_USER_PACKET_ENUM_HANDLE {
     constructor() {
-        super();
         this.type = RakMessages.ID_USER_PACKET_ENUM;
         this.handles = [];
 
@@ -72,4 +98,4 @@ class ID_USER_PACKET_ENUM_HANDLE extends MessageHandler {
     }
 }
 
-module.exports = ID_USER_PACKET_ENUM_HANDLE;
+module.exports = ID_USER_PACKET_ENUM;

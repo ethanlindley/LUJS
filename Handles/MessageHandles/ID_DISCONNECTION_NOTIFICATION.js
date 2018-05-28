@@ -4,23 +4,16 @@
  */
 const RakMessages = require('node-raknet/RakMessages.js');
 const BitStream = require('node-raknet/BitStream.js');
-const MessageHandler = require('node-raknet/MessageHandler.js');
 const {ReliabilityLayer, Reliability} = require('node-raknet/ReliabilityLayer.js');
 
-class ID_CONNECTION_REQUEST_HANDLE extends MessageHandler {
-    constructor() {
-        super();
-        this.type = RakMessages.ID_DISCONNECTION_NOTIFICATION;
-        /**
-         *
-         * @param {RakServer} server
-         * @param {BitStream} packet
-         * @param user
-         */
-        this.handle = function(server, packet, user) {
-            console.log("Client has disconnected");
-        }
-    }
+/**
+ *
+ * @param {RakServer} server
+ */
+function ID_DISCONNECTION_NOTIFICATION(server) {
+    server.on(String(RakMessages.ID_DISCONNECTION_NOTIFICATION), function(packet, user) {
+        console.log(`Client ${user.address} has disconnected`);
+    });
 }
 
-module.exports = ID_CONNECTION_REQUEST_HANDLE;
+module.exports = ID_DISCONNECTION_NOTIFICATION;

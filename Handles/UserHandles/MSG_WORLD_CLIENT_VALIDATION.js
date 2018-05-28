@@ -11,52 +11,65 @@ const BitStream = require('node-raknet/BitStream');
 const {ReliabilityLayer, Reliability} = require('node-raknet/ReliabilityLayer.js');
 const UserSessionInfo = require('../../LU/Messages/UserSessionInfo');
 const {DiconnectNotify, DisconnectNotifyReason} = require('../../LU/Messages/DisconnectNotify');
+const Sequelize = require('sequelize');
 
-class MSG_AUTH_LOGIN_REQUEST extends UserMessageHandler {
-    constructor() {
-        super();
-        this.remoteConnectionType = LURemoteConnectionType.server;
-        this.messageType = LUServerMessageType.MSG_WORLD_CLIENT_VALIDATION;
+/**
+ * TODO: This function is still a WIP. I need to refine the query to get an actual result. Ignore the error for now...
+ */
+function MSG_WORLD_CLIENT_VALIDATION(handler) {
+    handler.on([LURemoteConnectionType.server, LUServerMessageType.MSG_WORLD_CLIENT_VALIDATION].join(), function(server, packet, user) {
+        let client = server.getClient(user.address);
 
-        /**
-         *
-         * @param server
-         * @param {BitStream}packet
-         * @param user
-         */
-        this.handle = function(server, packet, user) {
-            let client = server.getClient(user.address);
+        let sessionInfo = new UserSessionInfo();
+        sessionInfo.deserialize(packet);
 
-            let sessionInfo = new UserSessionInfo();
-            sessionInfo.deserialize(packet);
+        User.findOne({
+            where: {
+                username: sessionInfo.username
+            }
+        }).then(userDB => {
+            if(userDB !== null) {
+                const Op = Sequelize.Op;
+                Session.findOne({
+                    where: {
+                        [Op.and]: [
+                            {user_id: userDB.id},
+                            {start_time:{[Op.lt]: new Date()}},
+                            {end_time:{[Op.gt]: new Date()}},
+                            {ip: user.address}
+                        ]
+                    },
+                }).then(session => {
+                    if(session === null) {
+                        // We didn't find a valid session for this user... Time to disconnect them...
+                        let response = new DiconnectNotify(); // TODO: Investigate error...
+                        response.reason = DisconnectNotifyReason.INVALID_SESSION_KEY;
 
-            const Op = Sequelize.Op;
-            Session.findOne({
-                where: {
-                    [Op.and]: [
-                        {username: sessionInfo.username},
-                        {start_time:{[Op.lt]: new Date()}},
-                        {end_time:{[Op.gt]: new Date()}},
-                        {ip: user.address}
-                    ]
-                },
-            }).then(session => {
-                if(session === null) {
-                    // We didn't find a valid session for this user... Time to disconnect them...
-                    let response = new DiconnectNotify();
-                    response.reason = DisconnectNotifyReason.INVALID_SESSION_KEY;
+                        let send = new BitStream();
+                        send.writeByte(RakMessages.ID_USER_PACKET_ENUM);
+                        send.writeShort(LURemoteConnectionType.general);
+                        send.writeLong(LUGeneralMessageType.MSG_SERVER_DISCONNECT_NOTIFY);
+                        send.writeByte(0);
+                        response.serialize(send);
+                        client.send(send, Reliability.RELIABLE_ORDERED);
+                    } else {
+                        client.user_id = userDB.id;
+                    }
+                });
+            } else {
+                let response = new DiconnectNotify(); // TODO: Investigate error...
+                response.reason = DisconnectNotifyReason.INVALID_SESSION_KEY;
 
-                    let send = new BitStream();
-                    send.writeByte(RakMessages.ID_USER_PACKET_ENUM);
-                    send.writeShort(LURemoteConnectionType.general);
-                    send.writeLong(LUGeneralMessageType.MSG_SERVER_DISCONNECT_NOTIFY);
-                    send.writeByte(0);
-                    response.serialize(send);
-                    client.send(send, Reliability.RELIABLE_ORDERED);
-                }
-            });
-        };
-    }
+                let send = new BitStream();
+                send.writeByte(RakMessages.ID_USER_PACKET_ENUM);
+                send.writeShort(LURemoteConnectionType.general);
+                send.writeLong(LUGeneralMessageType.MSG_SERVER_DISCONNECT_NOTIFY);
+                send.writeByte(0);
+                response.serialize(send);
+                client.send(send, Reliability.RELIABLE_ORDERED);
+            }
+        });
+    });
 }
 
-module.exports = MSG_AUTH_LOGIN_REQUEST;
+module.exports = MSG_WORLD_CLIENT_VALIDATION;

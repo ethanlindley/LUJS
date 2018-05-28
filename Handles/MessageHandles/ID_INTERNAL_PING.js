@@ -4,30 +4,22 @@
  */
 const RakMessages = require('node-raknet/RakMessages.js');
 const BitStream = require('node-raknet/BitStream.js');
-const MessageHandler = require('node-raknet/MessageHandler.js');
 const {ReliabilityLayer, Reliability} = require('node-raknet/ReliabilityLayer.js');
 
-class ID_INTERNAL_PING_HANDLE extends MessageHandler {
-    constructor() {
-        super();
-        this.type = RakMessages.ID_INTERNAL_PING;
-        /**
-         *
-         * @param {RakServer} server
-         * @param {BitStream} packet
-         * @param user
-         */
-        this.handle = function(server, packet, user) {
-            let client = server.getClient(user.address);
-            let ping = packet.readLong();
+/**
+ *
+ * @param {RakServer} server
+ */
+function ID_INTERNAL_PING(server) {
+    server.on(String(RakMessages.ID_INTERNAL_PING), function(packet, user) {
+        let client = this.getClient(user.address);
+        let ping = packet.readLong();
 
-            let response = new BitStream();
-            response.writeByte(RakMessages.ID_CONNECTED_PONG);
-            response.writeLong(ping);
-            response.writeLong(Date.now() - server.startTime);
-            client.send(response, Reliability.UNRELIABLE);
-        }
-    }
+        let response = new BitStream();
+        response.writeByte(RakMessages.ID_CONNECTED_PONG);
+        response.writeLong(ping);
+        response.writeLong(Date.now() - this.startTime);
+        client.send(response, Reliability.UNRELIABLE);
+    });
 }
-
-module.exports = ID_INTERNAL_PING_HANDLE;
+module.exports = ID_INTERNAL_PING;

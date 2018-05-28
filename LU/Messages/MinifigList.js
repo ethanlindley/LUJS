@@ -53,7 +53,7 @@ class MinifigList extends Message {
         for(let i = 0; i < this.characters.length; i ++) {
             let character = this.characters[i];
             stream.writeLongLong(character.id);
-            stream.writeLongLong(character.unknown1);
+            stream.writeLong(character.unknown1);
             stream.writeWString(character.name);
             stream.writeWString(character.unapprovedName);
             stream.writeByte(character.nameRejected);

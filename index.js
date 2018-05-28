@@ -32,7 +32,9 @@ fs.readdirSync(normalizedPath).forEach(function(file) {
 });
 
 global.servers.forEach(function(server) {
-    server.rakServer.handles = handles;
+    handles.forEach(function(handle) {
+        handle(server.rakServer);
+    });
 });
 
 
