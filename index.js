@@ -49,9 +49,9 @@ global.rebuildDB = false;
 
 // Set up connection information
 global.sequelize = new Sequelize('lujs', null, null, {
-    dialect: 'sqlite',
+    dialect: config.database.type,
     operatorsAliases: false,
-    storage: './lujs.sqlite',
+    storage: config.database.connection,
     logging: false,
 });
 

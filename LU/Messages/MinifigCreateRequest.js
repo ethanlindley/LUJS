@@ -42,6 +42,7 @@ class MinifigCreateRequest extends Message {
         this.rh = stream.readLong();
         this.eyebrows = stream.readLong();
         this.eyes = stream.readLong();
+
         this.mouth = stream.readLong();
         this.unknown2 = stream.readByte();
     }

@@ -8,47 +8,30 @@ const LUServerMessageType = require('../../LU/Message Types/LUServerMessageType'
 const LUClientMessageType = require('../../LU/Message Types/LUClientMessageType');
 const BitStream = require('node-raknet/BitStream');
 const {ReliabilityLayer, Reliability} = require('node-raknet/ReliabilityLayer.js');
-const MinifigCreateRequest = require('../../LU/Messages/MinifigCreateRequest');
-const MinifigList = require('../../LU/Messages/MinifigList');
-const {MinifigCreateResponse, CreationResponse} = require('../../LU/Messages/MinifigCreateResponse');
+const {MinifigDeleteResponse, DeletionResponse} = require('../../LU/Messages/MinifigDeleteResponse');
 
-function MSG_WORLD_CLIENT_CHARACTER_CREATE_REQUEST(handler) {
-    handler.on([LURemoteConnectionType.server, LUServerMessageType.MSG_WORLD_CLIENT_CHARACTER_CREATE_REQUEST].join(), function(server, packet, user) {
+function MSG_WORLD_CLIENT_CHARACTER_DELETE_REQUEST(handler) {
+    handler.on([LURemoteConnectionType.server, LUServerMessageType.MSG_WORLD_CLIENT_CHARACTER_DELETE_REQUEST].join(), function(server, packet, user) {
         let client = server.getClient(user.address);
 
-        let minifig = new MinifigCreateRequest();
-        minifig.deserialize(packet);
+        let character_ID = packet.readLongLong();
 
-        Character.create({
-            name: minifig.firstName + " " + minifig.middleName + " " + minifig.lastName,
-            unapproved_name: minifig.name,
-            shirt_color: minifig.shirtColor,
-            shirt_style: minifig.shirtStyle,
-            pants_color: minifig.pantsColor,
-            hair_style: minifig.hairStyle,
-            hair_color: minifig.hairColor,
-            lh: minifig.lh,
-            rh: minifig.rh,
-            eyebrows: minifig.eyebrows,
-            eyes: minifig.eyes,
-            mouth: minifig.mouth,
-            user_id: client.user_id
+        Character.destroy({
+            where: {
+                id: character_ID,
+            }
         }).then(function() {
-            let response = new MinifigCreateResponse();
-            response.id = CreationResponse.SUCCESS;
+            let response = new MinifigDeleteResponse();
 
             let send = new BitStream();
             send.writeByte(RakMessages.ID_USER_PACKET_ENUM);
             send.writeShort(LURemoteConnectionType.client);
-            send.writeLong(LUClientMessageType.CHARACTER_CREATE_RESPONSE);
+            send.writeLong(LUClientMessageType.DELETE_CHARACTER_RESPONSE);
             send.writeByte(0);
             response.serialize(send);
             client.send(send, Reliability.RELIABLE_ORDERED);
-
-            // Send the minifig list again
-            handler.emit([LURemoteConnectionType.server, LUServerMessageType.MSG_WORLD_CLIENT_CHARACTER_LIST_REQUEST].join(), server, undefined, user);
         });
     });
 }
 
-module.exports = MSG_WORLD_CLIENT_CHARACTER_CREATE_REQUEST;
+module.exports = MSG_WORLD_CLIENT_CHARACTER_DELETE_REQUEST;

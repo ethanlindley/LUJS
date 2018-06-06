@@ -59,16 +59,16 @@ class MinifigList extends Message {
             stream.writeByte(character.nameRejected);
             stream.writeByte(character.freeToPlay);
             stream.writeString(character.unknown2, 10);
-            stream.writeLong(character.shirtColor);
+            stream.writeLong(character.shirtColor); // Works
             stream.writeLong(character.shirtStyle);
-            stream.writeLong(character.pantsColor);
-            stream.writeLong(character.hairStyle);
-            stream.writeLong(character.hairColor);
+            stream.writeLong(character.pantsColor); // Works
+            stream.writeLong(character.hairStyle); // Works
+            stream.writeLong(character.hairColor); // Works
             stream.writeLong(character.lh);
             stream.writeLong(character.rh);
-            stream.writeLong(character.eyebrows);
-            stream.writeLong(character.eyes);
-            stream.writeLong(character.mouth);
+            stream.writeLong(character.eyebrows); // Works
+            stream.writeLong(character.eyes); // Works
+            stream.writeLong(character.mouth); // Doesn't
             stream.writeLong(character.unknown3);
             stream.writeShort(character.zone);
             stream.writeShort(character.instance);
