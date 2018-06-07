@@ -1,4 +1,5 @@
 const Sequelize = require('sequelize');
+const Log = require('../../Log');
 
 const User = sequelize.define('user', {
     id: {
@@ -42,7 +43,7 @@ const User = sequelize.define('user', {
 
 User.sync({force: rebuildDB}).then(() => {
     // Table created
-    console.log("User Table Loaded");
+    Log.info("User Table Loaded");
 });
 
 module.exports = User;

@@ -52,6 +52,10 @@ function MSG_AUTH_LOGIN_REQUEST(handler) {
                 // The user was not found
                 response.code = LoginCodes.badUsername;
             } else {
+
+                // This is how to generate passwords..
+                /* bcrypt.hash(password, 10, function(err, hash) {console.log(hash)}); */
+
                 if(bcrypt.compareSync(password, userModel.password)) {
                     response.code = LoginCodes.success;
 

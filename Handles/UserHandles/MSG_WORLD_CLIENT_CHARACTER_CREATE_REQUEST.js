@@ -11,6 +11,7 @@ const {ReliabilityLayer, Reliability} = require('node-raknet/ReliabilityLayer.js
 const MinifigCreateRequest = require('../../LU/Messages/MinifigCreateRequest');
 const MinifigList = require('../../LU/Messages/MinifigList');
 const {MinifigCreateResponse, CreationResponse} = require('../../LU/Messages/MinifigCreateResponse');
+const Sequelize = require('sequelize');
 
 function MSG_WORLD_CLIENT_CHARACTER_CREATE_REQUEST(handler) {
     handler.on([LURemoteConnectionType.server, LUServerMessageType.MSG_WORLD_CLIENT_CHARACTER_CREATE_REQUEST].join(), function(server, packet, user) {
@@ -33,7 +34,73 @@ function MSG_WORLD_CLIENT_CHARACTER_CREATE_REQUEST(handler) {
             eyes: minifig.eyes,
             mouth: minifig.mouth,
             user_id: client.user_id
-        }).then(function() {
+        }).then(function(character) {
+
+            const Op = Sequelize.Op;
+
+            // Find the shirt...
+            ItemComponent.findOne({
+                where: {
+                    [Op.and]: [
+                        {color1: minifig.shirtColor},
+                        {decal: minifig.shirtStyle},
+                        {equipLocation: "chest"}
+                    ]
+                }
+            }).then(function(inventoryComponent) {
+                ComponentsRegistry.findOne({
+                    where: {
+                        [Op.and]: [
+                            {component_type: 11},
+                            {component_id: inventoryComponent.id}
+                        ]
+                    }
+                }).then(function(component) {
+                    InventoryItem.create({
+                       character_id: character.id,
+                        lot: component.id,
+                        slot: 0,
+                        count: 1,
+                        type: 0,
+                        is_equipped: 1,
+                        is_linked: 1
+                    });
+
+                    // Find pants...
+                    ItemComponent.findOne({
+                        where: {
+                            [Op.and]: [
+                                {color1: minifig.pantsColor},
+                                {equipLocation: "legs"}
+                            ]
+                        }
+                    }).then(function(inventoryComponent) {
+                        ComponentsRegistry.findOne({
+                            where: {
+                                [Op.and]: [
+                                    {component_type: 11},
+                                    {component_id: inventoryComponent.id}
+                                ]
+                            }
+                        }).then(function(component) {
+                            InventoryItem.create({
+                                character_id: character.id,
+                                lot: component.id,
+                                slot: 1,
+                                count: 1,
+                                type: 0,
+                                is_equipped: 1,
+                                is_linked: 1
+                            }).then(function() {
+                                // Send the minifig list again
+                                handler.emit([LURemoteConnectionType.server, LUServerMessageType.MSG_WORLD_CLIENT_CHARACTER_LIST_REQUEST].join(), server, undefined, user);
+                            });
+                        });
+                    });
+                });
+            });
+
+
             let response = new MinifigCreateResponse();
             response.id = CreationResponse.SUCCESS;
 
@@ -44,9 +111,6 @@ function MSG_WORLD_CLIENT_CHARACTER_CREATE_REQUEST(handler) {
             send.writeByte(0);
             response.serialize(send);
             client.send(send, Reliability.RELIABLE_ORDERED);
-
-            // Send the minifig list again
-            handler.emit([LURemoteConnectionType.server, LUServerMessageType.MSG_WORLD_CLIENT_CHARACTER_LIST_REQUEST].join(), server, undefined, user);
         });
     });
 }

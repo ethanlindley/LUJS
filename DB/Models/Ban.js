@@ -1,4 +1,5 @@
 const Sequelize = require('sequelize');
+const Log = require('../../Log');
 
 const Ban = sequelize.define('ban', {
     id: {
@@ -26,7 +27,7 @@ const Ban = sequelize.define('ban', {
 
 Ban.sync({force: rebuildDB}).then(() => {
     // Table loaded
-    console.log("Ban Table Loaded");
+    Log.info("Ban Table Loaded");
 });
 
 

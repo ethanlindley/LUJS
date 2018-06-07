@@ -53,6 +53,7 @@ function MSG_WORLD_CLIENT_VALIDATION(handler) {
                         client.send(send, Reliability.RELIABLE_ORDERED);
                     } else {
                         client.user_id = userDB.id;
+                        handler.emit(`user-authenticated-${user.address}-${user.port}`);
                     }
                 });
             } else {

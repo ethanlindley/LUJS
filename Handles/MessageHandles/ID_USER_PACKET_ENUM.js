@@ -11,6 +11,7 @@ const LUAthenticationMessageType = require('../../LU/Message Types/LUAuthenticat
 const LUChatMessageType = require('../../LU/Message Types/LUChatMessageType');
 const LUServerMessageType = require('../../Lu/Message Types/LUServerMessageType');
 const LUClientMessageType = require('../../LU/Message Types/LUClientMessageType');
+const Log = require('../../Log');
 
 /**
  *
@@ -33,69 +34,9 @@ function ID_USER_PACKET_ENUM(server) {
         if(this.userMessageHandler.listenerCount([remoteConnectionType,packetID].join()) > 0) {
             this.userMessageHandler.emit([remoteConnectionType,packetID].join(), this, packet, user);
         } else {
-            console.log(`No listeners found for: ${[remoteConnectionType,packetID].join()}`);
+            Log.debug(`No listeners found for: ${[remoteConnectionType,packetID].join()}`);
         }
     });
-}
-
-
-class ID_USER_PACKET_ENUM_HANDLE {
-    constructor() {
-        this.type = RakMessages.ID_USER_PACKET_ENUM;
-        this.handles = [];
-
-        let normalizedPath = require("path").join(__dirname, "../UserHandles");
-        let handles = [];
-        require("fs").readdirSync(normalizedPath).forEach(function(file) {
-            handles.push(require("../UserHandles/" + file));
-        });
-        this.handles = handles;
-
-        /**
-         *
-         * @param {RakServer} server
-         * @param {BitStream} packet
-         * @param user
-         */
-        let parent = this;
-        this.handle = function(server, packet, user) {
-
-            let remoteConnectionType = packet.readShort();
-            let packetID = packet.readLong();
-            let alwaysZero = packet.readByte();
-
-            let handled = false;
-            for(let i = 0; i < parent.handles.length; i ++) {
-                let handle = parent.handles[i].create();
-                if(handle.remoteConnectionType === remoteConnectionType && handle.messageType === packetID) {
-                    handled = true;
-                    handle.handle(server, packet, user);
-                }
-            }
-
-            if(!handled) {
-                console.log("Received message for " + LURemoteConnectionType.key(remoteConnectionType));
-
-                switch (remoteConnectionType) {
-                    case LURemoteConnectionType.general:
-                        console.log("   ID: " + LUGeneralMessageType.key(packetID));
-                        break;
-                    case LURemoteConnectionType.authentication:
-                        console.log("   ID: " + LUAthenticationMessageType.key(packetID));
-                        break;
-                    case LURemoteConnectionType.chat:
-                        console.log("   ID: " + LUChatMessageType.key(packetID));
-                        break;
-                    case LURemoteConnectionType.server:
-                        console.log("   ID: " + LUServerMessageType.key(packetID));
-                        break;
-                    case LURemoteConnectionType.client:
-                        console.log("   ID: " + LUClientMessageType.key(packetID));
-                        break;
-                }
-            }
-        }
-    }
 }
 
 module.exports = ID_USER_PACKET_ENUM;

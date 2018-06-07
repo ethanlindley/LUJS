@@ -1,4 +1,5 @@
 const Sequelize = require('sequelize');
+const Log = require('../../Log');
 
 const HardwareSurvey = sequelize.define('hardware_survey', {
     id: {
@@ -42,7 +43,7 @@ const HardwareSurvey = sequelize.define('hardware_survey', {
 
 HardwareSurvey.sync({force: rebuildDB}).then(() => {
     // Table created
-    console.log("HardwareSurvey Table Loaded");
+    Log.info("HardwareSurvey Table Loaded");
 });
 
 module.exports = HardwareSurvey;

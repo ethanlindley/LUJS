@@ -5,6 +5,7 @@
 const RakMessages = require('node-raknet/RakMessages.js');
 const BitStream = require('node-raknet/BitStream.js');
 const {ReliabilityLayer, Reliability} = require('node-raknet/ReliabilityLayer.js');
+const Log = require('../../Log');
 
 /**
  *
@@ -12,7 +13,7 @@ const {ReliabilityLayer, Reliability} = require('node-raknet/ReliabilityLayer.js
  */
 function ID_DISCONNECTION_NOTIFICATION(server) {
     server.on(String(RakMessages.ID_DISCONNECTION_NOTIFICATION), function(packet, user) {
-        console.log(`Client ${user.address} has disconnected`);
+        Log.info(`Client ${user.address} has disconnected`);
     });
 }
 

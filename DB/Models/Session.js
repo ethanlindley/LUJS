@@ -1,4 +1,5 @@
 const Sequelize = require('sequelize');
+const Log = require('../../Log');
 
 const Session = sequelize.define('session', {
     id: {
@@ -30,7 +31,7 @@ const Session = sequelize.define('session', {
 
 Session.sync({force: rebuildDB}).then(() => {
     // Table created
-    console.log("Session Table Loaded");
+    Log.info("Session Table Loaded");
 });
 
 

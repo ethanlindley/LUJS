@@ -1,4 +1,5 @@
 const Sequelize = require('sequelize');
+const Log = require('../../Log');
 
 const Character = sequelize.define('character', {
     id: {
@@ -77,12 +78,47 @@ const Character = sequelize.define('character', {
     user_id: {
         type: Sequelize.INTEGER,
         allowNull: false
+    },
+    x: {
+        type: Sequelize.DOUBLE,
+        allowNull: false,
+        defaultValue: -626.5847
+    },
+    y: {
+        type: Sequelize.DOUBLE,
+        allowNull: false,
+        defaultValue: 613.3515
+    },
+    z: {
+        type: Sequelize.DOUBLE,
+        allowNull: false,
+        defaultValue: -28.6374
+    },
+    rotation_x: {
+        type: Sequelize.DOUBLE,
+        allowNull: false,
+        defaultValue: 0.7015
+    },
+    rotation_y: {
+        type: Sequelize.DOUBLE,
+        allowNull: false,
+        defaultValue: 0.0
+    },
+    rotation_z: {
+        type: Sequelize.DOUBLE,
+        allowNull: false,
+        defaultValue: 0.7126
+    },
+    rotation_w: {
+        type: Sequelize.DOUBLE,
+        allowNull: false,
+        defaultValue: 0.0
     }
 });
 
 Character.sync({force: rebuildDB}).then(() => {
     // Table loaded
-    console.log("Character Table Loaded");
+    Log.info("Character Table Loaded");
 });
 
 

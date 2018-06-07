@@ -9,6 +9,7 @@ const LUClientMessageType = require('../../LU/Message Types/LUClientMessageType'
 const BitStream = require('node-raknet/BitStream');
 const {ReliabilityLayer, Reliability} = require('node-raknet/ReliabilityLayer.js');
 const MinifigList = require('../../LU/Messages/MinifigList');
+const Sequelize = require('sequelize');
 
 function MSG_WORLD_CLIENT_CHARACTER_LIST_REQUEST(handler) {
     handler.on([LURemoteConnectionType.server, LUServerMessageType.MSG_WORLD_CLIENT_CHARACTER_LIST_REQUEST].join(), function(server, packet, user) {
@@ -16,14 +17,17 @@ function MSG_WORLD_CLIENT_CHARACTER_LIST_REQUEST(handler) {
 
         let list = function() {
 
+        const Op = Sequelize.Op;
+
             Character.findAll({
                 where: {
                     user_id: client.user_id,
                 }
             }).then(characters => {
+                let promises = [];
                 let response = new MinifigList();
                 characters.forEach(function(character) {
-                    response.characters.push({
+                    char = {
                         id: character.id,
                         unknown1: 0,
                         name: character.name,
@@ -47,15 +51,31 @@ function MSG_WORLD_CLIENT_CHARACTER_LIST_REQUEST(handler) {
                         clone: character.clone,
                         last_log: character.last_log,
                         items: []
-                    });
+                    };
+
+                    promises.push(InventoryItem.findAll({
+                        where: {
+                            [Op.and]: [
+                                {character_id: character.id},
+                                {is_equipped: true},
+                            ]
+                        }
+                    }).then(function(items) {
+                        items.forEach(function(item) {
+                            char.items.push(item.lot);
+                        });
+                        response.characters.push(char);
+                    }));
                 });
-                let send = new BitStream();
-                send.writeByte(RakMessages.ID_USER_PACKET_ENUM);
-                send.writeShort(LURemoteConnectionType.client);
-                send.writeLong(LUClientMessageType.CHARACTER_LIST_RESPONSE);
-                send.writeByte(0);
-                response.serialize(send);
-                client.send(send, Reliability.RELIABLE_ORDERED);
+                Promise.all(promises).then(function() {
+                    let send = new BitStream();
+                    send.writeByte(RakMessages.ID_USER_PACKET_ENUM);
+                    send.writeShort(LURemoteConnectionType.client);
+                    send.writeLong(LUClientMessageType.CHARACTER_LIST_RESPONSE);
+                    send.writeByte(0);
+                    response.serialize(send);
+                    client.send(send, Reliability.RELIABLE_ORDERED);
+                });
             });
         };
 
@@ -63,7 +83,8 @@ function MSG_WORLD_CLIENT_CHARACTER_LIST_REQUEST(handler) {
         // TODO: Or just use this user event bus... Although I wonder how it would deal with more internal traffic
         //TODO: Further thought... What about an event bus per user?
 
-        setTimeout(list, 500); // This is to ensure that the user ID is loaded... Should be a better way of doing this, surely...
+        handler.on(`user-authenticated-${user.address}-${user.port}`, list);
+        //setTimeout(list, 1000); // This is to ensure that the user ID is loaded... Should be a better way of doing this, surely...
     });
 }
 

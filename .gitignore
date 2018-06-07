@@ -29,6 +29,6 @@ node_modules
 
 \.idea/
 
-lujs\.sqlite
-
 config\.json
+
+*.sqlite
